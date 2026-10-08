@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1420">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="NBA Líneas">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏀</text></svg>">
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏀</text></svg>">
+<title>NBA Líneas</title>
+<style>
+:root{
+  --bg:#0f1420; --card:#171e2e; --card2:#1d2639; --line:#2a3550;
+  --txt:#e8ecf5; --mut:#8d98b3; --acc:#ff7a1a; --ok:#22c55e; --bad:#ef4444;
+  --okbg:rgba(34,197,94,.16); --badbg:rgba(239,68,68,.14);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:15px}
+body{padding:calc(env(safe-area-inset-top,0px) + 12px) 12px calc(env(safe-area-inset-bottom,0px) + 84px)}
+h1{font-size:20px;margin:4px 0 12px;display:flex;align-items:center;gap:8px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+label{display:block;font-size:12px;color:var(--mut);margin:0 0 4px;text-transform:uppercase;letter-spacing:.04em}
+input,select{width:100%;background:var(--card2);color:var(--txt);border:1px solid var(--line);border-radius:10px;padding:11px 12px;font-size:16px;outline:none}
+input:focus,select:focus{border-color:var(--acc)}
+.row{display:grid;gap:10px;margin-bottom:10px}
+.r2{grid-template-columns:1fr 1fr}
+.r3{grid-template-columns:1fr 1fr 1fr}
+.r4{grid-template-columns:repeat(4,1fr)}
+.sec{font-size:12px;color:var(--acc);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin:14px 0 8px}
+button.go{width:100%;background:var(--acc);color:#1a0d00;border:0;border-radius:12px;padding:14px;font-size:16px;font-weight:800;margin-top:6px}
+button.go:disabled{opacity:.6}
+.msg{padding:12px;border-radius:10px;font-size:14px;margin-bottom:12px}
+.err{background:var(--badbg);border:1px solid var(--bad);color:#ffb4b4}
+.info{background:var(--card2);border:1px solid var(--line);color:var(--mut)}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.chip{background:var(--card2);border:1px solid var(--line);color:var(--txt);border-radius:999px;padding:8px 12px;font-size:14px}
+.head h2{margin:0;font-size:18px}
+.head p{margin:3px 0 0;color:var(--mut);font-size:13px}
+.tabs{position:fixed;left:0;right:0;bottom:0;display:flex;background:#0b101b;border-top:1px solid var(--line);padding:6px 6px calc(env(safe-area-inset-bottom,0px) + 6px);z-index:10}
+.tab{flex:1;background:none;border:0;color:var(--mut);font-size:11px;padding:6px 2px;border-radius:10px;display:flex;flex-direction:column;align-items:center;gap:2px}
+.tab span.i{font-size:18px}
+.tab.on{color:var(--acc);background:rgba(255,122,26,.1)}
+.pane{display:none}.pane.on{display:block}
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--line);border-radius:12px}
+table{border-collapse:collapse;width:100%;font-size:13px;white-space:nowrap}
+th,td{padding:8px 9px;text-align:center;border-bottom:1px solid var(--line)}
+th{background:var(--card2);color:var(--mut);font-size:11px;text-transform:uppercase;position:sticky;top:0}
+td.l,th.l{text-align:left}
+tr:last-child td{border-bottom:0}
+td.ok{background:var(--okbg);color:var(--ok);font-weight:700}
+td.no{background:var(--badbg);color:var(--bad);font-weight:700}
+td.sticky,th.sticky{position:sticky;left:0;background:var(--card);z-index:1}
+th.sticky{background:var(--card2)}
+.metric{margin-bottom:14px}
+.metric .t{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+.metric .t b{font-size:16px}
+.metric .t small{color:var(--mut)}
+.bar{height:10px;background:var(--card2);border-radius:99px;overflow:hidden}
+.bar>i{display:block;height:100%;border-radius:99px}
+.pct{font-size:22px;font-weight:800}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat{background:var(--card2);border-radius:12px;padding:12px}
+.stat .k{color:var(--mut);font-size:12px;text-transform:uppercase}
+.stat .v{font-size:26px;font-weight:800;margin:2px 0}
+.stat .s{color:var(--mut);font-size:12px}
+.split h3{margin:0 0 4px;font-size:16px}
+.split .n{color:var(--mut);font-size:13px;margin-bottom:10px}
+.top{display:flex;gap:12px;align-items:flex-start}
+.medal{font-size:28px;line-height:1}
+.top .d{flex:1}
+.top .d b{font-size:15px}
+.top .d .sub{color:var(--mut);font-size:12px;margin:2px 0 8px}
+.pills{display:flex;flex-wrap:wrap;gap:6px}
+.pill{background:var(--card2);border-radius:8px;padding:5px 9px;font-size:13px}
+.pill.hl{background:var(--acc);color:#1a0d00;font-weight:800}
+.seg{display:flex;gap:6px;margin-bottom:12px;overflow-x:auto}
+.seg button{background:var(--card2);border:1px solid var(--line);color:var(--txt);border-radius:999px;padding:8px 14px;font-size:14px}
+.seg button.on{background:var(--acc);color:#1a0d00;border-color:var(--acc);font-weight:700}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid #1a0d00;border-right-color:transparent;border-radius:50%;animation:s .7s linear infinite;vertical-align:-2px;margin-right:8px}
+@keyframes s{to{transform:rotate(360deg)}}
+.hidden{display:none!important}
+.foot{color:var(--mut);font-size:12px;text-align:center;margin-top:8px}
+</style>
+</head>
+<body>
+
+<h1>🏀 NBA Líneas</h1>
+
+<!-- ========== FORMULARIO ========== -->
+<div class="card" id="formCard">
+  <div class="row">
+    <div>
+      <label for="jugador">Jugador</label>
+      <input id="jugador" list="plist" placeholder="Ej: Luka Doncic" autocomplete="off" autocapitalize="words" autocorrect="off">
+      <datalist id="plist"></datalist>
+    </div>
+  </div>
+  <div class="row r3">
+    <div>
+      <label for="temp">Temporada</label>
+      <input id="temp" type="number" inputmode="numeric" placeholder="2026">
+    </div>
+    <div>
+      <label for="npart">Nº partidos</label>
+      <input id="npart" type="number" inputmode="numeric" placeholder="20">
+    </div>
+    <div>
+      <label for="filtro">Local / Visita</label>
+      <select id="filtro">
+        <option value="ambos">Ambos</option>
+        <option value="L">Local (L)</option>
+        <option value="V">Visita (V)</option>
+      </select>
+    </div>
+  </div>
+  <div class="sec">Líneas (≥) — deja vacío para no evaluar</div>
+  <div class="row r4">
+    <div><label for="lpts">PTS</label><input id="lpts" type="number" inputmode="decimal" step="0.5"></div>
+    <div><label for="lreb">REB</label><input id="lreb" type="number" inputmode="decimal" step="0.5"></div>
+    <div><label for="last">AST</label><input id="last" type="number" inputmode="decimal" step="0.5"></div>
+    <div><label for="l3pm">3PM</label><input id="l3pm" type="number" inputmode="decimal" step="0.5"></div>
+  </div>
+  <button class="go" id="btn">Analizar</button>
+  <div class="foot" id="tempHelp"></div>
+</div>
+
+<div id="status"></div>
+
+<!-- ========== RESULTADOS ========== -->
+<div id="results" class="hidden">
+  <div class="card head" id="head"></div>
+
+  <div class="pane on" id="p1">
+    <div class="sec" style="margin-top:0">Tabla de partidos y evaluación de líneas</div>
+    <div class="scroll" id="tabla"></div>
+  </div>
+
+  <div class="pane" id="p2">
+    <div class="card" id="cumpl"></div>
+  </div>
+
+  <div class="pane" id="p3">
+    <div class="grid2" id="prom"></div>
+  </div>
+
+  <div class="pane" id="p4">
+    <div id="splits"></div>
+  </div>
+
+  <div class="pane" id="p5">
+    <div class="seg" id="seg"></div>
+    <div id="top3"></div>
+  </div>
+</div>
+
+<nav class="tabs hidden" id="tabs">
+  <button class="tab on" data-t="p1"><span class="i">📋</span>Partidos</button>
+  <button class="tab" data-t="p2"><span class="i">🎯</span>Líneas</button>
+  <button class="tab" data-t="p3"><span class="i">📊</span>Promedios</button>
+  <button class="tab" data-t="p4"><span class="i">🏠</span>L / V</button>
+  <button class="tab" data-t="p5"><span class="i">🏆</span>Top 3</button>
+</nav>
+
+<script>
+/* ============================================================
+   LÓGICA (equivalente al Colab)
+   ============================================================ */
+const BASE = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba";
+const GAMELOG = "https://site.web.api.espn.com/apis/common/v3/sports/basketball/nba/athletes/";
+const STATS = ["PTS", "REB", "3PM", "AST"];
+
+// minúsculas, sin acentos (Dončić → doncic), sin ' ’ .
+function normalize(s) {
+  return String(s || "").toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/['’.]/g, "").replace(/\s+/g, " ").trim();
+}
+
+async function getJSON(url, params) {
+  const u = new URL(url);
+  if (params) Object.entries(params).forEach(([k, v]) => u.searchParams.set(k, v));
+  const r = await fetch(u.toString());
+  if (!r.ok) throw new Error("HTTP " + r.status);
+  return r.json();
+}
+
+// Índice de jugadores (todos los rosters, en paralelo) con caché de 12 h
+async function cargarIndice() {
+  try {
+    const c = JSON.parse(localStorage.getItem("nba_idx_v1") || "null");
+    if (c && Date.now() - c.t < 12 * 3600 * 1000 && c.d.length > 100) return c.d;
+  } catch (e) {}
+  const teams = await getJSON(BASE + "/teams");
+  const lista = teams.sports[0].leagues[0].teams.map(g => ({ id: g.team.id, nombre: g.team.displayName }));
+  const rosters = await Promise.all(lista.map(eq =>
+    getJSON(BASE + "/teams/" + eq.id + "/roster").then(r => ({ eq, r })).catch(() => null)
+  ));
+  const out = [];
+  for (const x of rosters) {
+    if (!x) continue;
+    let at = x.r.athletes || [];
+    if (at.length && at[0] && at[0].items) at = at.flatMap(g => g.items || []);
+    for (const a of at) {
+      const n = a.fullName || a.displayName || "";
+      if (n) out.push({ id: a.id, nombre: n, equipo: x.eq.nombre, n: normalize(n) });
+    }
+  }
+  if (!out.length) throw new Error("No se pudo cargar la lista de jugadores de ESPN.");
+  try { localStorage.setItem("nba_idx_v1", JSON.stringify({ t: Date.now(), d: out })); } catch (e) {}
+  return out;
+}
+
+function buscarCandidatos(idx, texto) {
+  const t = normalize(texto);
+  if (!t) return [];
+  const exacto = idx.filter(p => p.n === t);
+  if (exacto.length) return exacto;
+  const parcial = idx.filter(p => p.n.includes(t));
+  if (parcial.length) return parcial;
+  const toks = t.split(" ");
+  return idx.filter(p => toks.every(k => p.n.includes(k)));
+}
+
+function parseGamelog(data, temporada) {
+  const labels = data.labels, seasonTypes = data.seasonTypes, meta = data.events || {};
+  if (!labels || !seasonTypes) throw new Error("No hay registros de partidos para la temporada " + temporada + ".");
+  const ix = {}; labels.forEach((l, i) => ix[l] = i);
+  const col = (fila, n, def) => (ix[n] === undefined || ix[n] >= fila.length) ? def : fila[ix[n]];
+  const num = v => { const x = parseFloat(v); return isNaN(x) ? null : x; };
+  const filas = [];
+  for (const st of seasonTypes) {
+    const tipo = st.displayName || "Regular Season";
+    for (const cat of (st.categories || [])) {
+      for (const ev of (cat.events || [])) {
+        const stats = ev.stats || [], m = meta[ev.eventId];
+        if (!stats.length || !m) continue;
+        const tres = col(stats, "3PT", "0-0");
+        const tresM = (typeof tres === "string" && tres.includes("-")) ? tres.split("-")[0] : tres;
+        const simbolo = m.atVs || "vs";
+        filas.push({
+          Fecha: (m.gameDate || "").slice(0, 10),
+          Partido: (simbolo + " " + ((m.opponent || {}).abbreviation || "")).trim(),
+          LV: simbolo !== "@" ? "L" : "V",
+          R: m.gameResult || "",
+          MIN: num(col(stats, "MIN", "0")),
+          PTS: num(col(stats, "PTS", "0")),
+          REB: num(col(stats, "REB", "0")),
+          "3PM": num(tresM),
+          AST: num(col(stats, "AST", "0")),
+          Tipo: tipo
+        });
+      }
+    }
+  }
+  return filas.filter(f => f.Fecha).sort((a, b) => b.Fecha.localeCompare(a.Fecha));
+}
+
+function filtrarYRecortar(filas, filtro, n) {
+  let f = filas;
+  if (filtro === "L" || filtro === "V") f = f.filter(x => x.LV === filtro);
+  return f.slice(0, n);
+}
+
+const mean = a => { const v = a.filter(x => x !== null); return v.length ? v.reduce((s, x) => s + x, 0) / v.length : null; };
+const mn = a => { const v = a.filter(x => x !== null); return v.length ? Math.min(...v) : null; };
+const mx = a => { const v = a.filter(x => x !== null); return v.length ? Math.max(...v) : null; };
+const fmt = (x, d = 1) => x === null || x === undefined ? "–" : (Number.isInteger(x) && d === 0 ? String(x) : x.toFixed(d));
+
+// Evaluación: cada partido recibe Cumple por línea y COMBO (todas a la vez)
+function evaluar(filas, lineas) {
+  const activas = STATS.filter(s => lineas[s] !== null);
+  const ev = filas.map(f => {
+    const c = {};
+    let combo = true;
+    for (const s of activas) {
+      const ok = f[s] !== null && f[s] >= lineas[s];
+      c[s] = ok; combo = combo && ok;
+    }
+    return Object.assign({}, f, { cumple: c, combo: activas.length ? combo : null });
+  });
+  const total = ev.length;
+  const resumen = activas.map(s => {
+    const veces = ev.filter(f => f.cumple[s]).length;
+    return { stat: s, linea: lineas[s], veces, total, pct: total ? veces / total * 100 : 0 };
+  });
+  if (activas.length) {
+    const veces = ev.filter(f => f.combo).length;
+    resumen.push({ stat: "COMBO", linea: null, veces, total, pct: total ? veces / total * 100 : 0 });
+  }
+  return { ev, activas, resumen };
+}
+
+/* ============================================================
+   UI
+   ============================================================ */
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const NOMBRES = { PTS: "Puntos", REB: "Rebotes", AST: "Asistencias", "3PM": "Triples (3PM)" };
+let IDX = null, ESTADO = null;
+
+function setStatus(html, cls) { $("status").innerHTML = html ? '<div class="msg ' + (cls || "info") + '">' + html + "</div>" : ""; }
+function colorPct(p) { return p >= 70 ? "var(--ok)" : p >= 50 ? "#eab308" : "var(--bad)"; }
+
+function guardarForm() {
+  try {
+    localStorage.setItem("nba_form_v1", JSON.stringify({
+      j: $("jugador").value, t: $("temp").value, n: $("npart").value, f: $("filtro").value,
+      p: $("lpts").value, r: $("lreb").value, a: $("last").value, x: $("l3pm").value
+    }));
+  } catch (e) {}
+}
+function cargarForm() {
+  try {
+    const d = JSON.parse(localStorage.getItem("nba_form_v1") || "null");
+    if (!d) return;
+    $("jugador").value = d.j || ""; $("temp").value = d.t || ""; $("npart").value = d.n || "";
+    $("filtro").value = d.f || "ambos";
+    $("lpts").value = d.p || ""; $("lreb").value = d.r || ""; $("last").value = d.a || ""; $("l3pm").value = d.x || "";
+  } catch (e) {}
+}
+function leerLinea(id) { const v = $(id).value.trim().replace(",", "."); if (v === "") return null; const x = parseFloat(v); return isNaN(x) ? null : x; }
+
+function actualizarAyudaTemporada() {
+  const t = parseInt($("temp").value, 10);
+  $("tempHelp").textContent = t ? "Temporada NBA " + (t - 1) + "-" + t : "Ej: 2026 = temporada 2025-26";
+}
+
+async function analizar(playerSel) {
+  const nombreIn = $("jugador").value.trim();
+  const temporada = parseInt($("temp").value, 10);
+  const n = parseInt($("npart").value, 10);
+  const filtro = $("filtro").value;
+  const lineas = { PTS: leerLinea("lpts"), REB: leerLinea("lreb"), AST: leerLinea("last"), "3PM": leerLinea("l3pm") };
+
+  if (!nombreIn && !playerSel) return setStatus("Escribe el nombre de un jugador.", "err");
+  if (!temporada || temporada < 1947) return setStatus("Indica una temporada válida (ej: 2026).", "err");
+  if (!n || n < 1) return setStatus("Indica cuántos partidos analizar.", "err");
+  guardarForm();
+
+  const btn = $("btn");
+  btn.disabled = true; btn.innerHTML = '<span class="spin"></span>Buscando…';
+  $("results").classList.add("hidden"); $("tabs").classList.add("hidden");
+  try {
+    let jug = playerSel;
+    if (!jug) {
+      setStatus("Cargando jugadores NBA…");
+      if (!IDX) IDX = await cargarIndice();
+      poblarDatalist();
+      const c = buscarCandidatos(IDX, nombreIn);
+      if (!c.length) throw new Error("No se encontró '" + esc(nombreIn) + "' en los rosters actuales de la NBA.");
+      if (c.length > 1) {
+        const lista = c.slice(0, 12);
+        $("status").innerHTML = '<div class="msg info">Varios resultados, elige uno:<div class="chips">' +
+          lista.map((p, i) => '<button class="chip" data-i="' + i + '">' + esc(p.nombre) + " · " + esc(p.equipo) + "</button>").join("") + "</div></div>";
+        $("status").querySelectorAll(".chip").forEach(b => b.onclick = () => analizar(lista[+b.dataset.i]));
+        return;
+      }
+      jug = c[0];
+    }
+    setStatus("Descargando partidos de " + esc(jug.nombre) + "…");
+    const data = await getJSON(GAMELOG + jug.id + "/gamelog", { season: temporada });
+    const todas = parseGamelog(data, temporada);
+    if (!todas.length) throw new Error("Sin partidos en el historial para la temporada " + temporada + ".");
+    const filas = filtrarYRecortar(todas, filtro, n);
+    if (!filas.length) throw new Error("Sin partidos que cumplan el filtro " + filtro + " en " + temporada + ".");
+    const res = evaluar(filas, lineas);
+    ESTADO = { jug, temporada, filtro, lineas, filas, res };
+    setStatus("");
+    render();
+    $("formCard").scrollIntoView({ behavior: "smooth", block: "start" });
+  } catch (e) {
+    const m = String(e.message || e);
+    setStatus("ERROR: " + (/Failed to fetch|NetworkError|Load failed/i.test(m) ? "no se pudo conectar con ESPN. Revisa tu conexión." : m), "err");
+  } finally {
+    btn.disabled = false; btn.textContent = "Analizar";
+  }
+}
+
+function poblarDatalist() {
+  if (!IDX) return;
+  $("plist").innerHTML = IDX.map(p => '<option value="' + esc(p.nombre) + '">').join("");
+}
+
+function render() {
+  const { jug, temporada, filtro, lineas, filas, res } = ESTADO;
+  const etiqFiltro = filtro === "L" ? " · Solo LOCAL" : filtro === "V" ? " · Solo VISITANTE" : "";
+  $("head").innerHTML = "<h2>" + esc(jug.nombre.toUpperCase()) + "</h2><p>" + esc(jug.equipo) +
+    " · NBA " + (temporada - 1) + "-" + temporada + " · Últimos " + filas.length + " partidos" + etiqFiltro + "</p>";
+
+  // ---- Pestaña 1: tabla
+  const act = res.activas;
+  let h = '<table><thead><tr><th class="sticky">#</th><th class="l">Fecha</th><th class="l">Partido</th><th>L/V</th><th>R</th><th>MIN</th><th>PTS</th><th>REB</th><th>3PM</th><th>AST</th>';
+  act.forEach(s => h += "<th>✓ " + s + "</th>");
+  if (act.length) h += "<th>✓ COMBO</th>";
+  h += "<th class='l'>Tipo</th></tr></thead><tbody>";
+  res.ev.forEach((f, i) => {
+    const c = s => lineas[s] === null ? "" : (f.cumple[s] ? ' class="ok"' : ' class="no"');
+    h += '<tr><td class="sticky">' + (i + 1) + '</td><td class="l">' + f.Fecha + '</td><td class="l">' + esc(f.Partido) + "</td><td>" + f.LV + "</td><td>" + esc(f.R) + "</td><td>" + fmt(f.MIN, 0) +
+      "</td><td" + c("PTS") + ">" + fmt(f.PTS, 0) + "</td><td" + c("REB") + ">" + fmt(f.REB, 0) + "</td><td" + c("3PM") + ">" + fmt(f["3PM"], 0) + "</td><td" + c("AST") + ">" + fmt(f.AST, 0) + "</td>";
+    act.forEach(s => h += "<td" + (f.cumple[s] ? ' class="ok">SÍ' : ' class="no">NO') + "</td>");
+    if (act.length) h += "<td" + (f.combo ? ' class="ok">SÍ' : ' class="no">NO') + "</td>";
+    h += '<td class="l">' + esc(f.Tipo) + "</td></tr>";
+  });
+  $("tabla").innerHTML = h + "</tbody></table>";
+
+  // ---- Pestaña 2: cumplimiento
+  if (!res.resumen.length) {
+    $("cumpl").innerHTML = '<div class="msg info" style="margin:0">No definiste ninguna línea. Vuelve al formulario y completa al menos una.</div>';
+  } else {
+    $("cumpl").innerHTML = '<div class="sec" style="margin-top:0">🎯 Cumplimiento de líneas</div>' + res.resumen.map(r => {
+      const titulo = r.stat === "COMBO" ? "COMBINADO (todas a la vez)" : NOMBRES[r.stat] + " ≥ " + r.linea;
+      return '<div class="metric"><div class="t"><b>' + titulo + '</b><span class="pct" style="color:' + colorPct(r.pct) + '">' + r.pct.toFixed(1) + '%</span></div>' +
+        '<div class="bar"><i style="width:' + r.pct + '%;background:' + colorPct(r.pct) + '"></i></div>' +
+        '<small style="color:var(--mut)">' + r.veces + " / " + r.total + " partidos</small></div>";
+    }).join("");
+  }
+
+  // ---- Pestaña 3: promedios globales
+  $("prom").innerHTML = STATS.map(s => {
+    const v = filas.map(f => f[s]);
+    return '<div class="stat"><div class="k">' + NOMBRES[s] + '</div><div class="v">' + fmt(mean(v), 2) + '</div><div class="s">mín ' + fmt(mn(v), 0) + " / máx " + fmt(mx(v), 0) + "</div></div>";
+  }).join("") + '<div class="stat" style="grid-column:1/-1"><div class="k">Minutos</div><div class="v">' + fmt(mean(filas.map(f => f.MIN)), 1) + '</div><div class="s">promedio por partido · ' + filas.length + " partidos</div></div>";
+
+  // ---- Pestaña 4: splits L / V
+  $("splits").innerHTML = [["L", "🏠 Local"], ["V", "✈️ Visitante"]].map(([k, lab]) => {
+    const sub = res.ev.filter(f => f.LV === k);
+    if (!sub.length) return '<div class="card split"><h3>' + lab + '</h3><div class="n">Sin partidos</div></div>';
+    let o = '<div class="card split"><h3>' + lab + '</h3><div class="n">' + sub.length + " partidos</div><div class='grid2'>";
+    o += STATS.map(s => '<div class="stat"><div class="k">' + s + '</div><div class="v">' + fmt(mean(sub.map(f => f[s])), 1) + "</div>" +
+      (lineas[s] !== null ? '<div class="s">≥ ' + lineas[s] + ": " + (sub.filter(f => f.cumple[s]).length / sub.length * 100).toFixed(0) + "%</div>" : "") + "</div>").join("");
+    o += "</div>";
+    if (act.length) {
+      const p = sub.filter(f => f.combo).length / sub.length * 100;
+      o += '<div class="stat" style="margin-top:10px"><div class="k">Combinado</div><div class="v" style="color:' + colorPct(p) + '">' + p.toFixed(0) + '%</div></div>';
+    }
+    return o + "</div>";
+  }).join("");
+
+  // ---- Pestaña 5: mejores 3 partidos
+  renderTop("PTS");
+  $("seg").innerHTML = STATS.map(s => '<button data-s="' + s + '" class="' + (s === "PTS" ? "on" : "") + '">' + s + "</button>").join("");
+  $("seg").querySelectorAll("button").forEach(b => b.onclick = () => {
+    $("seg").querySelectorAll("button").forEach(x => x.classList.remove("on"));
+    b.classList.add("on"); renderTop(b.dataset.s);
+  });
+
+  $("results").classList.remove("hidden"); $("tabs").classList.remove("hidden");
+  irTab("p1");
+}
+
+function renderTop(stat) {
+  const orden = ESTADO.res.ev.slice().sort((a, b) => ((b[stat] ?? -1) - (a[stat] ?? -1)) || ((b.PTS ?? -1) - (a.PTS ?? -1))).slice(0, 3);
+  const medallas = ["🥇", "🥈", "🥉"];
+  $("top3").innerHTML = orden.map((f, i) =>
+    '<div class="card top"><div class="medal">' + medallas[i] + '</div><div class="d"><b>' + f.Fecha + " · " + esc(f.Partido) + "</b>" +
+    '<div class="sub">' + (f.LV === "L" ? "Local" : "Visitante") + (f.R ? " · " + esc(f.R) : "") + " · " + esc(f.Tipo) + " · " + fmt(f.MIN, 0) + " min</div>" +
+    '<div class="pills">' + STATS.map(s => '<span class="pill' + (s === stat ? " hl" : "") + '">' + fmt(f[s], 0) + " " + s + "</span>").join("") + "</div></div></div>"
+  ).join("");
+}
+
+function irTab(id) {
+  document.querySelectorAll(".pane").forEach(p => p.classList.toggle("on", p.id === id));
+  document.querySelectorAll(".tab").forEach(t => t.classList.toggle("on", t.dataset.t === id));
+  window.scrollTo({ top: $("results").offsetTop - 8, behavior: "smooth" });
+}
+
+document.querySelectorAll(".tab").forEach(t => t.onclick = () => irTab(t.dataset.t));
+$("btn").onclick = () => analizar();
+$("jugador").addEventListener("keydown", e => { if (e.key === "Enter") analizar(); });
+$("temp").addEventListener("input", actualizarAyudaTemporada);
+cargarForm(); actualizarAyudaTemporada();
+if ($("temp").value === "") { $("temp").value = ""; }
+// Precarga el índice en segundo plano para que la primera búsqueda sea rápida
+cargarIndice().then(d => { IDX = d; poblarDatalist(); }).catch(() => {});
+</script>
+</body>
+</html>
