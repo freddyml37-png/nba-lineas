@@ -179,12 +179,40 @@ function normalize(s) {
     .replace(/['’.]/g, "").replace(/\s+/g, " ").trim();
 }
 
+// Conexión directa a ESPN; si el navegador la bloquea (CORS), prueba por proxies públicos
+let MODO = 0;
+const RUTAS = [
+  u => u,
+  u => "https://corsproxy.io/?url=" + encodeURIComponent(u),
+  u => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
+  u => "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(u)
+];
 async function getJSON(url, params) {
   const u = new URL(url);
   if (params) Object.entries(params).forEach(([k, v]) => u.searchParams.set(k, v));
-  const r = await fetch(u.toString());
-  if (!r.ok) throw new Error("HTTP " + r.status);
-  return r.json();
+  const full = u.toString();
+  let ultimo = "";
+  for (let k = 0; k < RUTAS.length; k++) {
+    const i = (MODO + k) % RUTAS.length;
+    try {
+      const r = await fetch(RUTAS[i](full));
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      const j = await r.json();
+      MODO = i;
+      return j;
+    } catch (e) { ultimo = String(e.message || e); }
+  }
+  throw new Error("Failed to fetch (" + ultimo + ")");
+}
+
+// Ejecuta tareas con un máximo de concurrencia (para no saturar los proxies)
+async function enLotes(items, fn, max) {
+  const out = new Array(items.length);
+  let i = 0;
+  await Promise.all(Array.from({ length: max }, async () => {
+    while (i < items.length) { const k = i++; out[k] = await fn(items[k]); }
+  }));
+  return out;
 }
 
 // Índice de jugadores (todos los rosters, en paralelo) con caché de 12 h
@@ -195,9 +223,8 @@ async function cargarIndice() {
   } catch (e) {}
   const teams = await getJSON(BASE + "/teams");
   const lista = teams.sports[0].leagues[0].teams.map(g => ({ id: g.team.id, nombre: g.team.displayName }));
-  const rosters = await Promise.all(lista.map(eq =>
-    getJSON(BASE + "/teams/" + eq.id + "/roster").then(r => ({ eq, r })).catch(() => null)
-  ));
+  const rosters = await enLotes(lista, eq =>
+    getJSON(BASE + "/teams/" + eq.id + "/roster").then(r => ({ eq, r })).catch(() => null), 6);
   const out = [];
   for (const x of rosters) {
     if (!x) continue;
