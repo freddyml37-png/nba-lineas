@@ -125,7 +125,15 @@ th.sticky{background:var(--card2)}
   </div>
   <button class="go" id="btn">Analizar</button>
   <div class="foot" id="tempHelp"></div>
-  <div class="foot">v2</div>
+  <details style="margin-top:10px" id="cfg">
+    <summary style="color:var(--mut);font-size:13px;cursor:pointer">⚙️ Conexión (Worker)</summary>
+    <div style="margin-top:8px">
+      <label for="wurl">URL de tu Worker de Cloudflare</label>
+      <input id="wurl" type="url" placeholder="https://nba-proxy.tuusuario.workers.dev" autocapitalize="off" autocorrect="off">
+      <div class="foot" style="text-align:left">Se guarda solo en este dispositivo.</div>
+    </div>
+  </details>
+  <div class="foot">v3</div>
 </div>
 
 <div id="status"></div>
@@ -180,23 +188,30 @@ function normalize(s) {
     .replace(/['’.]/g, "").replace(/\s+/g, " ").trim();
 }
 
-// Conexión directa a ESPN; si el navegador la bloquea (CORS), prueba por proxies públicos
+// Rutas de conexión: tu Worker propio (si lo configuras) → directa → proxies públicos
 let MODO = 0;
-const RUTAS = [
-  u => u,
-  u => "https://corsproxy.io/?url=" + encodeURIComponent(u),
-  u => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
-  u => "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(u)
-];
+function workerURL() { try { return (localStorage.getItem("nba_worker") || "").trim().replace(/\/+$/, ""); } catch (e) { return ""; } }
+function armarRutas() {
+  const r = [];
+  const w = workerURL();
+  if (w) r.push({ n: "Tu Worker (Cloudflare)", f: u => w + "/?url=" + encodeURIComponent(u) });
+  r.push({ n: "Directa a ESPN", f: u => u });
+  r.push({ n: "Proxy corsproxy.io", f: u => "https://corsproxy.io/?url=" + encodeURIComponent(u) });
+  r.push({ n: "Proxy allorigins", f: u => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u) });
+  r.push({ n: "Proxy codetabs", f: u => "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(u) });
+  return r;
+}
 async function getJSON(url, params) {
   const u = new URL(url);
   if (params) Object.entries(params).forEach(([k, v]) => u.searchParams.set(k, v));
   const full = u.toString();
+  const RUTAS = armarRutas();
+  if (MODO >= RUTAS.length) MODO = 0;
   let ultimo = "";
   for (let k = 0; k < RUTAS.length; k++) {
     const i = (MODO + k) % RUTAS.length;
     try {
-      const r = await fetch(RUTAS[i](full));
+      const r = await fetch(RUTAS[i].f(full));
       if (!r.ok) throw new Error("HTTP " + r.status);
       const j = await r.json();
       MODO = i;
@@ -411,19 +426,19 @@ async function analizar(playerSel) {
 async function diagnostico() {
   const out = $("diagOut"); out.innerHTML = "Probando…";
   const test = BASE + "/teams";
-  const nombres = ["Directa a ESPN", "Proxy 1 (corsproxy.io)", "Proxy 2 (allorigins)", "Proxy 3 (codetabs)"];
-  let html = "";
+  const RUTAS = armarRutas();
+  let html = workerURL() ? "" : "⚠️ No hay Worker configurado (abre ⚙️ Conexión).<br>";
   for (let i = 0; i < RUTAS.length; i++) {
     try {
-      const r = await fetch(RUTAS[i](test));
+      const r = await fetch(RUTAS[i].f(test));
       const t = await r.text();
-      html += (r.ok ? "✅ " : "❌ ") + nombres[i] + " → HTTP " + r.status + " (" + t.length + " bytes)<br>";
+      html += (r.ok ? "✅ " : "❌ ") + RUTAS[i].n + " → HTTP " + r.status + " (" + t.length + " bytes)<br>";
     } catch (e) {
-      html += "❌ " + nombres[i] + " → " + esc(String(e.message || e)) + "<br>";
+      html += "❌ " + RUTAS[i].n + " → " + esc(String(e.message || e)) + "<br>";
     }
     out.innerHTML = html + "…";
   }
-  out.innerHTML = html + "<br>Versión de la app: v2";
+  out.innerHTML = html + "<br>Versión de la app: v3";
 }
 
 function poblarDatalist() {
@@ -519,6 +534,9 @@ $("btn").onclick = () => analizar();
 $("jugador").addEventListener("keydown", e => { if (e.key === "Enter") analizar(); });
 $("temp").addEventListener("input", actualizarAyudaTemporada);
 cargarForm(); actualizarAyudaTemporada();
+$("wurl").value = workerURL();
+$("wurl").addEventListener("input", () => { try { localStorage.setItem("nba_worker", $("wurl").value.trim()); } catch (e) {} MODO = 0; });
+if (!workerURL()) $("cfg").open = true;
 if ($("temp").value === "") { $("temp").value = ""; }
 // Precarga el índice en segundo plano para que la primera búsqueda sea rápida
 cargarIndice().then(d => { IDX = d; poblarDatalist(); }).catch(() => {});
