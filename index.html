@@ -159,7 +159,7 @@ input[type=range]{padding:0;border:0;background:none;accent-color:var(--acc)}
       <div class="foot" style="text-align:left">Se guarda solo en este dispositivo.</div>
     </div>
   </details>
-  <div class="foot">v4</div>
+  <div class="foot">v5</div>
 </div>
 
 <div id="status"></div>
@@ -608,11 +608,12 @@ function statsEff(P,cond){let fgm=0,fga=0;const c=["FG","FGM-FGA","FGM/FGA"].fin
  else if(P.lb.includes("FGM")&&P.lb.includes("FGA"))P.rows.forEach(g=>{fgm+=N(g.FGM);fga+=N(g.FGA);});
  const base=P.rows.filter(g=>g.MIN>0);let v=base;
  if(cond!=="TODOS"){const f=base.filter(g=>g.loc===cond);if(f.length)v=f;}
- if(!v.length)return null;const t=k=>v.reduce((s,g)=>s+g[k],0),tm=t("MIN"),n=v.length;
- return{pts_min:tm>0?r(t("PTS")/tm,3):0,reb_min:tm>0?r(t("REB")/tm,3):0,ast_min:tm>0?r(t("AST")/tm,3):0,fga_min:r(tm>0?fga/tm:0.44,3),fg_pct:r(fga>0?fgm/fga:0.47,3),min_prom:r(tm/n,1),n,real:{PTS:t("PTS")/n,REB:t("REB")/n,AST:t("AST")/n}};}
+ if(!v.length)return null;let fv=0;if(c)v.forEach(g=>{fv+=pFG(g[c])[1];});else if(P.lb.includes("FGA"))v.forEach(g=>{fv+=N(g.FGA);});
+ const t=k=>v.reduce((s,g)=>s+g[k],0),tm=t("MIN"),n=v.length;
+ return{pts_min:tm>0?r(t("PTS")/tm,3):0,reb_min:tm>0?r(t("REB")/tm,3):0,ast_min:tm>0?r(t("AST")/tm,3):0,fga_min:r(tm>0?fv/tm:0.44,3),fg_pct:r(fga>0?fgm/fga:0.47,3),min_prom:r(tm/n,1),n,real:{PTS:t("PTS")/n,REB:t("REB")/n,AST:t("AST")/n}};}
 function factorDesc(d){return d===0?[0.95,"⚠️ Back-to-Back (Fatiga: -5%)",0]:d===1?[1.0,"✅ Ritmo Normal (1 día de descanso)",1]:(d===2||d===3)?[1.03,"🚀 Descanso Óptimo (+3% efectividad)",2]:[0.98,"⚠️ Descanso Prolongado (Posible pérdida de ritmo: -2%)",3];}
 function proyectar(min,st,pe,pr,dr,dias){const pp=(pe+pr)/2,fp=pp/AVG_PACE,fd=dr/AVG_DEF,[ff,desc,seg]=factorDesc(dias);
- const fga=(min*st.fga_min)*fp*ff,fgp=Math.min(st.fg_pct*(2.0-fd)*ff,0.70),pts=fga*fgp*2.15+(min*(st.pts_min*0.22))*fp*ff,reb=(min*st.reb_min)*fp*ff,ast=(min*st.ast_min)*fp*ff;
+ const fga=(min*st.fga_min)*fp*ff,fgp=Math.min(st.fg_pct*fd*ff,0.70),pts=fga*fgp*2.15+(min*(st.pts_min*0.22))*fp*ff,reb=(min*st.reb_min)*fp*ff,ast=(min*st.ast_min)*fp*ff;
  return{fga:r(fga,1),fgp:r(fgp*100,1),pts:r(pts,1),reb:r(reb,1),ast:r(ast,1),pra:r(pts+reb+ast,1),pp:r(pp,1),desc,seg};}
 const bar=(v,a,b,ref,col)=>{const p=x=>Math.max(0,Math.min(100,(x-a)/(b-a)*100));return`<div class="trk"><i class="fil" style="width:${p(v)}%;background:${col}"></i>${ref!=null?`<b class="ref" style="left:${p(ref)}%"></b>`:""}</div>`;};
 const lv=(a,b)=>`<div class="lv"><span>${a}</span><b>${b}</b></div>`;
@@ -654,7 +655,7 @@ async function analizarEff(sel){const nom=$("ejug").value.trim(),temp=parseInt($
   const P=parseEff(await getJSON(GAMELOG+j.id+"/gamelog",{season:temp})),st=P.rows.length?statsEff(P,cond):null;
   if(!st)throw new Error("Sin partidos con minutos para la temporada "+temp+". Prueba con otra temporada.");
   let pos=j.pos?posEs(j.pos):"N/A";if(pos==="N/A"){try{const p=((await getJSON(GAMELOG+j.id)).athlete||{}).position||{};pos=posEs(p.displayName||p.abbreviation||p.name);}catch(e){}}
-  const team=tsel!=="AUTO"?tsel:(j.ab?fixAb(j.ab):(P.eq?fixAb(P.eq):null)),dias=fecha&&P.last?Math.max(0,Math.round((Date.parse(fecha)-Date.parse(P.last))/864e5)):2,
+  const team=tsel!=="AUTO"?tsel:(j.ab?fixAb(j.ab):(P.eq?fixAb(P.eq):null)),dias=fecha&&P.last?Math.max(0,Math.round((Date.parse(fecha)-Date.parse(P.last))/864e5)-1):2,
    mB=cond==="VISITANTE"?"VISITANTE":"LOCAL",mR=cond==="LOCAL"?"VISITANTE":"LOCAL",
    pT=(PACE[team]||{})[mB]||AVG_PACE,pR=(PACE[rival]||{})[mR]||AVG_PACE,dR=(DEFR[rival]||{})[mR]||AVG_DEF;
   S.innerHTML=team?"":'<div class="msg info">No pude detectar el equipo del jugador: elígelo en "Equipo del jugador" para usar su ritmo real.</div>';
