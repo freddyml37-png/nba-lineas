@@ -159,7 +159,7 @@ input[type=range]{padding:0;border:0;background:none;accent-color:var(--acc)}
       <div class="foot" style="text-align:left">Se guarda solo en este dispositivo.</div>
     </div>
   </details>
-  <div class="foot">v5</div>
+  <div class="foot">v7</div>
 </div>
 
 <div id="status"></div>
@@ -599,7 +599,7 @@ function parseEff(d){const lb=d.labels||[],ev=d.events||{},rows=[],days=[];let e
  for(const st of d.seasonTypes||[])for(const c of st.categories||[])for(const e of c.events||[]){
   const m=ev[e.eventId]||{},o=m.opponent||{},s=e.stats||[];
   if(m.playerTeam&&m.playerTeam.abbreviation)eq=m.playerTeam.abbreviation;
-  const g={loc:o.isHome?"VISITANTE":"LOCAL"};lb.forEach((l,i)=>{if(i<s.length)g[l]=s[i];});
+  const g={loc:o.isHome?"VISITANTE":"LOCAL",rv:fixAb(o.abbreviation),fe:(m.gameDate||"").slice(0,10),res:m.gameResult||""};lb.forEach((l,i)=>{if(i<s.length)g[l]=s[i];});
   ["MIN","PTS","REB","AST"].forEach(k=>g[k]=N(g[k]));rows.push(g);
   if(m.gameDate){const x=localDay(m.gameDate);if(x)days.push(x);}}
  return{rows,lb,eq,last:days.sort().pop()||null};}
@@ -640,8 +640,21 @@ function renderEff(R){const{nom,pos,team,rival,cond,mB,mR,min,temp,st,res,pT,pR,
  <div class="card"><div class="sec" style="margin-top:0">Tiros proyectados</div><div class="ring">
   <svg width="120" height="120" viewBox="0 0 120 120"><circle cx="60" cy="60" r="48" fill="none" stroke="var(--card2)" stroke-width="12"/><circle cx="60" cy="60" r="48" fill="none" stroke="var(--acc)" stroke-width="12" stroke-linecap="round" stroke-dasharray="${C2*res.fgp/100} ${C2}" transform="rotate(-90 60 60)"/><text x="60" y="66" text-anchor="middle" fill="var(--txt)" font-size="22" font-weight="800">${res.fgp}%</text></svg>
   <div style="flex:1">${lv("Tiros (FGA)",res.fga)}${lv("Efectividad ajustada",res.fgp+"%")}${lv("Efectividad base",r(st.fg_pct*100,1)+"%")}</div></div></div>
+ ${histCard(R)}
  <div class="foot">Proyección estimada con el modelo del Colab; no garantiza resultados.</div>`;
  $("effOut").scrollIntoView({behavior:"smooth",block:"start"});}
+function histCard(R){const{rival,res,st,pT,pR,dR,dias,hist}=R;
+ let h='<div class="card"><div class="sec" style="margin-top:0">¿Se cumplió la proyección? vs '+esc(rival)+"</div>";
+ if(!hist.length)return h+'<div class="msg info" style="margin:0">Sin partidos previos contra '+esc(rival)+" en esta ni en la temporada anterior.</div></div>";
+ const K=[["PTS",res.pts],["REB",res.reb],["AST",res.ast],["PRA",res.pra]],n=hist.length,val=(g,k)=>k==="PRA"?g.PTS+g.REB+g.AST:g[k],old=hist.some(g=>g.old);
+ h+='<div class="leg" style="margin-bottom:8px"><span>Últimos '+n+' partidos vs '+esc(rival)+(old?" (incluye temporada anterior)":"")+"</span><span>✓ = real ≥ proyección</span></div>";
+ K.forEach(([k,p])=>{const c=hist.filter(g=>val(g,k)>=p).length,pc=c/n*100;h+=`<div class="lv"><span>${k} (proy. ${p})</span><b>${c}/${n} · ${r(pc,0)}%</b></div>`+bar(pc,0,100,null,pc>=60?"var(--ok)":pc>=40?"#eab308":"var(--bad)");});
+ h+='<div class="scroll" style="margin-top:8px"><table><thead><tr><th class="l">Fecha</th><th>L/V</th><th>MIN</th><th>PTS</th><th>REB</th><th>AST</th><th>PRA</th><th>PRA aj.</th></tr></thead><tbody>';
+ hist.forEach(g=>{h+=`<tr><td class="l">${g.fe}</td><td>${g.loc==="LOCAL"?"L":"V"}</td><td>${g.MIN}</td>`+K.map(([k,p])=>`<td class="${val(g,k)>=p?"ok":"no"}">${r(val(g,k),1)}</td>`).join("")+`<td>${proyectar(g.MIN,st,pT,pR,dR,dias).pra}</td></tr>`;});
+ const av=k=>r(hist.reduce((s,g)=>s+val(g,k),0)/n,1);
+ h+=`<tr><td class="l"><b>Prom. real</b></td><td></td><td>${r(hist.reduce((s,g)=>s+g.MIN,0)/n,1)}</td>`+K.map(([k])=>`<td><b>${av(k)}</b></td>`).join("")+"<td></td></tr>";
+ h+=`<tr><td class="l"><b>Proyección</b></td><td></td><td>${R.min}</td>`+K.map(([,p])=>`<td><b>${p}</b></td>`).join("")+"<td></td></tr></tbody></table></div>";
+ return h+'<div class="leg" style="margin-top:6px"><span>PRA aj. = proyección con los minutos que jugó en ese partido</span></div></div>';}
 function elegir(el,lista,cb){el.innerHTML='<div class="msg info">Varios resultados, elige uno:<div class="chips">'+lista.map((p,i)=>`<button class="chip" data-i="${i}">${esc(p.nombre)} · ${esc(p.equipo)}</button>`).join("")+"</div></div>";el.querySelectorAll(".chip").forEach(b=>b.onclick=()=>cb(lista[+b.dataset.i]));}
 async function analizarEff(sel){const nom=$("ejug").value.trim(),temp=parseInt($("etemp").value,10),cond=$("econd").value,rival=$("erival").value,fecha=$("efecha").value,min=+$("emin").value,tsel=$("eteam").value,S=$("effStatus");
  const err=m=>{S.innerHTML='<div class="msg err">'+m+"</div>";};
@@ -659,7 +672,11 @@ async function analizarEff(sel){const nom=$("ejug").value.trim(),temp=parseInt($
    mB=cond==="VISITANTE"?"VISITANTE":"LOCAL",mR=cond==="LOCAL"?"VISITANTE":"LOCAL",
    pT=(PACE[team]||{})[mB]||AVG_PACE,pR=(PACE[rival]||{})[mR]||AVG_PACE,dR=(DEFR[rival]||{})[mR]||AVG_DEF;
   S.innerHTML=team?"":'<div class="msg info">No pude detectar el equipo del jugador: elígelo en "Equipo del jugador" para usar su ritmo real.</div>';
-  renderEff({nom:j.nombre,pos,team:team||"N/D",rival,cond,mB,mR,min,temp,st,res:proyectar(min,st,pT,pR,dR,dias),pT,pR,dR,dias,last:P.last,fecha});
+  const pick=(rows,old)=>rows.filter(g=>g.rv===rival&&g.MIN>0).sort((a,b)=>b.fe.localeCompare(a.fe)).map(g=>({...g,old}));
+  let hist=pick(P.rows,false);
+  if(hist.length<7){try{hist=hist.concat(pick(parseEff(await getJSON(GAMELOG+j.id+"/gamelog",{season:temp-1})).rows,true));}catch(e){}}
+  hist=hist.slice(0,7);
+  renderEff({nom:j.nombre,pos,team:team||"N/D",rival,cond,mB,mR,min,temp,st,res:proyectar(min,st,pT,pR,dR,dias),pT,pR,dR,dias,last:P.last,fecha,hist});
  }catch(e){err(esc(String(e.message||e)));}finally{b.disabled=false;b.textContent="Calcular eficiencia";}}
 function verVista(v){$("viewLineas").classList.toggle("hidden",v!=="l");$("viewEff").classList.toggle("hidden",v!=="e");document.querySelectorAll(".toptab").forEach(t=>t.classList.toggle("on",t.dataset.v===v));try{localStorage.setItem("nba_view",v);}catch(e){}window.scrollTo(0,0);}
 (function(){document.querySelectorAll(".toptab").forEach(t=>t.onclick=()=>verVista(t.dataset.v));
