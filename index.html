@@ -83,11 +83,37 @@ th.sticky{background:var(--card2)}
 @keyframes s{to{transform:rotate(360deg)}}
 .hidden{display:none!important}
 .foot{color:var(--mut);font-size:12px;text-align:center;margin-top:8px}
+
+:root{color-scheme:dark}
+.toptabs{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;display:flex;gap:6px;background:var(--bg);padding:6px 0 10px}
+.toptab{flex:1;background:var(--card);border:1px solid var(--line);color:var(--mut);border-radius:12px;padding:11px 6px;font-size:14px;font-weight:700}
+.toptab.on{background:var(--acc);color:#1a0d00;border-color:var(--acc)}
+input[type=range]{padding:0;border:0;background:none;accent-color:var(--acc)}
+.hero{background:linear-gradient(160deg,#1f2a44,#171e2e)}
+.hero .hn{font-size:20px;font-weight:800}
+.tags{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.tag{background:var(--card2);border-radius:8px;padding:4px 9px;font-size:12px}.tag.a{background:var(--acc);color:#1a0d00;font-weight:800}
+.big{font-size:44px;font-weight:900;color:var(--acc);line-height:1}
+.stk{display:flex;height:14px;border-radius:99px;overflow:hidden;margin:10px 0 6px}
+.leg{display:flex;justify-content:space-between;font-size:12px;color:var(--mut)}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.grid3 .stat .v{font-size:28px}
+.trk{position:relative;height:10px;background:var(--card2);border-radius:99px;margin:5px 0 8px}
+.fil{display:block;height:100%;border-radius:99px}
+.ref{position:absolute;top:-4px;bottom:-4px;width:2px;background:#fff;opacity:.8}
+.lv{display:flex;justify-content:space-between;font-size:13px}.lv span{color:var(--mut)}
+.seg4{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:8px 0}
+.seg4>div{background:var(--card2);border:2px solid transparent;border-radius:10px;padding:8px 2px;text-align:center;font-size:11px;color:var(--mut)}
+.seg4>div.on{border-color:var(--acc);color:var(--txt);background:rgba(255,122,26,.14)}
+.seg4 b{display:block;font-size:14px;color:var(--txt)}
+.ring{display:flex;align-items:center;gap:14px}
 </style>
 </head>
 <body>
 
 <h1>🏀 NBA Líneas</h1>
+<div class="toptabs"><button class="toptab on" data-v="l">📋 Líneas</button><button class="toptab" data-v="e">⚡ Eficiencia jugador</button></div>
+<div id="viewLineas">
 
 <!-- ========== FORMULARIO ========== -->
 <div class="card" id="formCard">
@@ -133,7 +159,7 @@ th.sticky{background:var(--card2)}
       <div class="foot" style="text-align:left">Se guarda solo en este dispositivo.</div>
     </div>
   </details>
-  <div class="foot">v3</div>
+  <div class="foot">v4</div>
 </div>
 
 <div id="status"></div>
@@ -172,6 +198,27 @@ th.sticky{background:var(--card2)}
   <button class="tab" data-t="p4"><span class="i">🏠</span>L / V</button>
   <button class="tab" data-t="p5"><span class="i">🏆</span>Top 3</button>
 </nav>
+</div>
+<div id="viewEff" class="hidden">
+ <div class="card">
+  <div class="row"><div><label for="ejug">Jugador</label><input id="ejug" list="plist" placeholder="Ej: Shai Gilgeous-Alexander" autocomplete="off" autocapitalize="words" autocorrect="off"></div></div>
+  <div class="row r2">
+   <div><label for="eteam">Equipo del jugador</label><select id="eteam"></select></div>
+   <div><label for="erival">Rival</label><select id="erival"></select></div>
+  </div>
+  <div class="row r2">
+   <div><label for="econd">Juega de</label><select id="econd"><option value="LOCAL">Local</option><option value="VISITANTE">Visita</option><option value="TODOS">Todos</option></select></div>
+   <div><label for="etemp">Temporada</label><input id="etemp" type="number" inputmode="numeric"></div>
+  </div>
+  <div class="row"><div><label for="efecha">Fecha del próximo partido</label><input id="efecha" type="date"></div></div>
+  <label for="emin">Minutos proyectados: <b id="eminv" style="color:var(--acc)">25</b></label>
+  <input id="emin" type="range" min="15" max="42" step="1" value="25">
+  <button class="go" id="ebtn">Calcular eficiencia</button>
+  <div class="foot" id="etempHelp"></div>
+ </div>
+ <div id="effStatus"></div>
+ <div id="effOut"></div>
+</div>
 
 <script>
 /* ============================================================
@@ -234,11 +281,11 @@ async function enLotes(items, fn, max) {
 // Índice de jugadores (todos los rosters, en paralelo) con caché de 12 h
 async function cargarIndice() {
   try {
-    const c = JSON.parse(localStorage.getItem("nba_idx_v1") || "null");
+    const c = JSON.parse(localStorage.getItem("nba_idx_v2") || "null");
     if (c && Date.now() - c.t < 12 * 3600 * 1000 && c.d.length > 100) return c.d;
   } catch (e) {}
   const teams = await getJSON(BASE + "/teams");
-  const lista = teams.sports[0].leagues[0].teams.map(g => ({ id: g.team.id, nombre: g.team.displayName }));
+  const lista = teams.sports[0].leagues[0].teams.map(g => ({ id: g.team.id, nombre: g.team.displayName, ab: g.team.abbreviation }));
   const rosters = await enLotes(lista, eq =>
     getJSON(BASE + "/teams/" + eq.id + "/roster").then(r => ({ eq, r })).catch(() => null), 6);
   const out = [];
@@ -248,11 +295,11 @@ async function cargarIndice() {
     if (at.length && at[0] && at[0].items) at = at.flatMap(g => g.items || []);
     for (const a of at) {
       const n = a.fullName || a.displayName || "";
-      if (n) out.push({ id: a.id, nombre: n, equipo: x.eq.nombre, n: normalize(n) });
+      if (n) out.push({ id: a.id, nombre: n, equipo: x.eq.nombre, ab: x.eq.ab, pos: (a.position && (a.position.displayName || a.position.abbreviation)) || "", n: normalize(n) });
     }
   }
   if (!out.length) throw new Error("No se pudo cargar la lista de jugadores de ESPN.");
-  try { localStorage.setItem("nba_idx_v1", JSON.stringify({ t: Date.now(), d: out })); } catch (e) {}
+  try { localStorage.setItem("nba_idx_v2", JSON.stringify({ t: Date.now(), d: out })); } catch (e) {}
   return out;
 }
 
@@ -526,7 +573,7 @@ function renderTop(stat) {
 function irTab(id) {
   document.querySelectorAll(".pane").forEach(p => p.classList.toggle("on", p.id === id));
   document.querySelectorAll(".tab").forEach(t => t.classList.toggle("on", t.dataset.t === id));
-  window.scrollTo({ top: $("results").offsetTop - 8, behavior: "smooth" });
+  window.scrollTo({ top: $("results").offsetTop - 64, behavior: "smooth" });
 }
 
 document.querySelectorAll(".tab").forEach(t => t.onclick = () => irTab(t.dataset.t));
@@ -540,6 +587,90 @@ if (!workerURL()) $("cfg").open = true;
 if ($("temp").value === "") { $("temp").value = ""; }
 // Precarga el índice en segundo plano para que la primera búsqueda sea rápida
 cargarIndice().then(d => { IDX = d; poblarDatalist(); }).catch(() => {});
+
+/* ===== EFICIENCIA JUGADOR (port del Colab NBA_PROYECCION___EFICIENCIA_CON_DESCANSO) ===== */
+const AVG_PACE=99.0,AVG_DEF=114.5,PACE={"ATL": {"LOCAL": 101.5, "VISITANTE": 100.8}, "BOS": {"LOCAL": 98.6, "VISITANTE": 98.1}, "BKN": {"LOCAL": 97.4, "VISITANTE": 97.0}, "CHA": {"LOCAL": 99.2, "VISITANTE": 98.8}, "CHI": {"LOCAL": 100.4, "VISITANTE": 99.9}, "CLE": {"LOCAL": 98.2, "VISITANTE": 97.8}, "DAL": {"LOCAL": 98.1, "VISITANTE": 97.6}, "DEN": {"LOCAL": 99.0, "VISITANTE": 98.5}, "DET": {"LOCAL": 99.5, "VISITANTE": 99.1}, "GS": {"LOCAL": 100.8, "VISITANTE": 100.2}, "HOU": {"LOCAL": 98.8, "VISITANTE": 98.3}, "IND": {"LOCAL": 102.4, "VISITANTE": 101.5}, "LAC": {"LOCAL": 97.8, "VISITANTE": 97.2}, "LAL": {"LOCAL": 100.1, "VISITANTE": 99.4}, "MEM": {"LOCAL": 101.2, "VISITANTE": 100.5}, "MIA": {"LOCAL": 97.5, "VISITANTE": 97.1}, "MIL": {"LOCAL": 99.2, "VISITANTE": 98.6}, "MIN": {"LOCAL": 98.0, "VISITANTE": 97.5}, "NO": {"LOCAL": 99.4, "VISITANTE": 98.9}, "NY": {"LOCAL": 96.8, "VISITANTE": 96.4}, "OKC": {"LOCAL": 99.8, "VISITANTE": 99.2}, "ORL": {"LOCAL": 97.9, "VISITANTE": 97.4}, "PHI": {"LOCAL": 98.5, "VISITANTE": 98.0}, "PHX": {"LOCAL": 99.1, "VISITANTE": 98.6}, "POR": {"LOCAL": 100.2, "VISITANTE": 99.5}, "SAC": {"LOCAL": 100.5, "VISITANTE": 99.8}, "SA": {"LOCAL": 100.9, "VISITANTE": 100.1}, "TOR": {"LOCAL": 99.3, "VISITANTE": 98.8}, "UTA": {"LOCAL": 100.1, "VISITANTE": 99.5}, "WSH": {"LOCAL": 101.4, "VISITANTE": 100.6}},DEFR={"ATL": {"LOCAL": 113.2, "VISITANTE": 114.5}, "BOS": {"LOCAL": 111.0, "VISITANTE": 113.5}, "BKN": {"LOCAL": 117.5, "VISITANTE": 120.2}, "CHA": {"LOCAL": 113.0, "VISITANTE": 116.1}, "CHI": {"LOCAL": 116.8, "VISITANTE": 119.4}, "CLE": {"LOCAL": 113.5, "VISITANTE": 116.8}, "DAL": {"LOCAL": 114.8, "VISITANTE": 118.2}, "DEN": {"LOCAL": 115.6, "VISITANTE": 119.1}, "DET": {"LOCAL": 108.5, "VISITANTE": 111.2}, "GS": {"LOCAL": 113.8, "VISITANTE": 116.5}, "HOU": {"LOCAL": 111.5, "VISITANTE": 114.2}, "IND": {"LOCAL": 116.5, "VISITANTE": 120.5}, "LAC": {"LOCAL": 114.2, "VISITANTE": 117.8}, "LAL": {"LOCAL": 115.0, "VISITANTE": 118.0}, "MEM": {"LOCAL": 117.0, "VISITANTE": 120.8}, "MIA": {"LOCAL": 112.5, "VISITANTE": 116.2}, "MIL": {"LOCAL": 117.2, "VISITANTE": 121.0}, "MIN": {"LOCAL": 112.0, "VISITANTE": 115.0}, "NO": {"LOCAL": 117.5, "VISITANTE": 121.2}, "NY": {"LOCAL": 111.8, "VISITANTE": 114.8}, "OKC": {"LOCAL": 106.5, "VISITANTE": 109.2}, "ORL": {"LOCAL": 112.8, "VISITANTE": 115.8}, "PHI": {"LOCAL": 113.5, "VISITANTE": 117.0}, "PHX": {"LOCAL": 112.2, "VISITANTE": 115.5}, "POR": {"LOCAL": 113.0, "VISITANTE": 116.8}, "SAC": {"LOCAL": 119.5, "VISITANTE": 123.2}, "SA": {"LOCAL": 109.8, "VISITANTE": 112.9}, "TOR": {"LOCAL": 111.5, "VISITANTE": 114.9}, "UTA": {"LOCAL": 120.2, "VISITANTE": 124.5}, "WSH": {"LOCAL": 120.8, "VISITANTE": 124.8}},POSES={"Point Guard": "Base (PG)", "Shooting Guard": "Escolta (SG)", "Small Forward": "Alero (SF)", "Power Forward": "Ala-Pívot (PF)", "Center": "Pívot (C)", "Guard": "Guardia (G)", "Forward": "Alero / Ala-Pívot (F)", "Guard-Forward": "Escolta / Alero (G-F)", "Forward-Guard": "Alero / Escolta (F-G)", "Forward-Center": "Ala-Pívot / Pívot (F-C)", "Center-Forward": "Pívot / Ala-Pívot (C-F)", "PG": "Base (PG)", "SG": "Escolta (SG)", "SF": "Alero (SF)", "PF": "Ala-Pívot (PF)", "C": "Pívot (C)", "G": "Guardia (G)", "F": "Alero (F)"},EQ="ATL Atlanta Hawks|BOS Boston Celtics|BKN Brooklyn Nets|CHA Charlotte Hornets|CHI Chicago Bulls|CLE Cleveland Cavaliers|DAL Dallas Mavericks|DEN Denver Nuggets|DET Detroit Pistons|GS Golden State Warriors|HOU Houston Rockets|IND Indiana Pacers|LAC LA Clippers|LAL Los Angeles Lakers|MEM Memphis Grizzlies|MIA Miami Heat|MIL Milwaukee Bucks|MIN Minnesota Timberwolves|NO New Orleans Pelicans|NY New York Knicks|OKC Oklahoma City Thunder|ORL Orlando Magic|PHI Philadelphia 76ers|PHX Phoenix Suns|POR Portland Trail Blazers|SAC Sacramento Kings|SA San Antonio Spurs|TOR Toronto Raptors|UTA Utah Jazz|WSH Washington Wizards".split("|").map(x=>[x.split(" ")[0],x.slice(x.indexOf(" ")+1)]);
+const r=(x,d)=>{const f=10**d;return Math.round(x*f)/f;},N=v=>{const x=parseFloat(v);return isNaN(x)?0:x;};
+const fixAb=a=>{a=String(a||"").toUpperCase();return({UTAH:"UTA",WAS:"WSH",NOP:"NO",GSW:"GS",SAS:"SA",NYK:"NY",PHO:"PHX",BRK:"BKN",CHO:"CHA"})[a]||a;};
+const posEs=p=>POSES[p]||p||"N/A";
+function pFG(v){if(typeof v==="string"&&v.includes("-")){const p=v.split("-"),a=parseFloat(p[0]),b=parseFloat(p[1]);return isNaN(a)||isNaN(b)?[0,0]:[a,b];}const x=parseFloat(v);return isNaN(x)?[0,0]:[x,x];}
+function localDay(raw){const d=new Date(raw);if(isNaN(d))return null;d.setUTCHours(d.getUTCHours()-5);return d.toISOString().slice(0,10);}
+function parseEff(d){const lb=d.labels||[],ev=d.events||{},rows=[],days=[];let eq="";
+ for(const st of d.seasonTypes||[])for(const c of st.categories||[])for(const e of c.events||[]){
+  const m=ev[e.eventId]||{},o=m.opponent||{},s=e.stats||[];
+  if(m.playerTeam&&m.playerTeam.abbreviation)eq=m.playerTeam.abbreviation;
+  const g={loc:o.isHome?"VISITANTE":"LOCAL"};lb.forEach((l,i)=>{if(i<s.length)g[l]=s[i];});
+  ["MIN","PTS","REB","AST"].forEach(k=>g[k]=N(g[k]));rows.push(g);
+  if(m.gameDate){const x=localDay(m.gameDate);if(x)days.push(x);}}
+ return{rows,lb,eq,last:days.sort().pop()||null};}
+function statsEff(P,cond){let fgm=0,fga=0;const c=["FG","FGM-FGA","FGM/FGA"].find(x=>P.lb.includes(x));
+ if(c)P.rows.forEach(g=>{const[a,b]=pFG(g[c]);fgm+=a;fga+=b;});
+ else if(P.lb.includes("FGM")&&P.lb.includes("FGA"))P.rows.forEach(g=>{fgm+=N(g.FGM);fga+=N(g.FGA);});
+ const base=P.rows.filter(g=>g.MIN>0);let v=base;
+ if(cond!=="TODOS"){const f=base.filter(g=>g.loc===cond);if(f.length)v=f;}
+ if(!v.length)return null;const t=k=>v.reduce((s,g)=>s+g[k],0),tm=t("MIN"),n=v.length;
+ return{pts_min:tm>0?r(t("PTS")/tm,3):0,reb_min:tm>0?r(t("REB")/tm,3):0,ast_min:tm>0?r(t("AST")/tm,3):0,fga_min:r(tm>0?fga/tm:0.44,3),fg_pct:r(fga>0?fgm/fga:0.47,3),min_prom:r(tm/n,1),n,real:{PTS:t("PTS")/n,REB:t("REB")/n,AST:t("AST")/n}};}
+function factorDesc(d){return d===0?[0.95,"⚠️ Back-to-Back (Fatiga: -5%)",0]:d===1?[1.0,"✅ Ritmo Normal (1 día de descanso)",1]:(d===2||d===3)?[1.03,"🚀 Descanso Óptimo (+3% efectividad)",2]:[0.98,"⚠️ Descanso Prolongado (Posible pérdida de ritmo: -2%)",3];}
+function proyectar(min,st,pe,pr,dr,dias){const pp=(pe+pr)/2,fp=pp/AVG_PACE,fd=dr/AVG_DEF,[ff,desc,seg]=factorDesc(dias);
+ const fga=(min*st.fga_min)*fp*ff,fgp=Math.min(st.fg_pct*(2.0-fd)*ff,0.70),pts=fga*fgp*2.15+(min*(st.pts_min*0.22))*fp*ff,reb=(min*st.reb_min)*fp*ff,ast=(min*st.ast_min)*fp*ff;
+ return{fga:r(fga,1),fgp:r(fgp*100,1),pts:r(pts,1),reb:r(reb,1),ast:r(ast,1),pra:r(pts+reb+ast,1),pp:r(pp,1),desc,seg};}
+const bar=(v,a,b,ref,col)=>{const p=x=>Math.max(0,Math.min(100,(x-a)/(b-a)*100));return`<div class="trk"><i class="fil" style="width:${p(v)}%;background:${col}"></i>${ref!=null?`<b class="ref" style="left:${p(ref)}%"></b>`:""}</div>`;};
+const lv=(a,b)=>`<div class="lv"><span>${a}</span><b>${b}</b></div>`;
+function renderEff(R){const{nom,pos,team,rival,cond,mB,mR,min,temp,st,res,pT,pR,dR,dias,last,fecha}=R,C={PTS:"var(--acc)",REB:"#38bdf8",AST:"#a78bfa"},tot=res.pts+res.reb+res.ast||1;
+ const tile=(k,l)=>{const mx=Math.max(res[k.toLowerCase()],st.real[k])*1.15||1;return`<div class="stat"><div class="k">${l}</div><div class="v" style="color:${C[k]}">${res[k.toLowerCase()]}</div>${bar(st.real[k],0,mx,null,"#52607f")}${bar(res[k.toLowerCase()],0,mx,null,C[k])}<div class="s">real ${r(st.real[k],1)}</div></div>`;};
+ const pv=[pT,pR,res.pp,AVG_PACE],a=Math.min(...pv)-1.5,b=Math.max(...pv)+1.5,dd=dR-AVG_DEF,fav=dd>=0,seg=[["B2B","0 d","×0.95"],["Normal","1 d","×1.00"],["Óptimo","2-3 d","×1.03"],["Prolongado","4+ d","×0.98"]],C2=2*Math.PI*48;
+ $("effOut").innerHTML=`
+ <div class="card hero"><div class="hn">${esc(nom.toUpperCase())}</div>
+  <div class="tags"><span class="tag">${esc(pos)}</span><span class="tag">${esc(team)} vs ${esc(rival)}</span><span class="tag a">${cond==="LOCAL"?"LOCAL":cond==="VISITANTE"?"VISITA":"TODOS"}</span><span class="tag">NBA ${temp-1}-${temp}</span></div>
+  <div class="leg" style="margin-bottom:10px"><span>Próximo: ${esc(fecha||"sin fecha")}</span><span>${min} min proyectados</span></div>
+  <div class="k" style="color:var(--mut);font-size:12px">PRA TOTAL PROYECTADO</div><div class="big">${res.pra}</div>
+  <div class="stk"><i style="width:${res.pts/tot*100}%;background:${C.PTS}"></i><i style="width:${res.reb/tot*100}%;background:${C.REB}"></i><i style="width:${res.ast/tot*100}%;background:${C.AST}"></i></div>
+  <div class="leg"><span style="color:${C.PTS}">● PTS ${res.pts}</span><span style="color:${C.REB}">● REB ${res.reb}</span><span style="color:${C.AST}">● AST ${res.ast}</span></div></div>
+ <div class="card"><div class="sec" style="margin-top:0">Proyección vs promedio real (${st.n} partidos)</div><div class="grid3">${tile("PTS","Puntos")}${tile("REB","Rebotes")}${tile("AST","Asist.")}</div>
+  <div class="leg" style="margin-top:8px"><span>▬ gris: promedio real</span><span>▬ color: proyección</span></div>
+  <div style="margin-top:10px">${lv("Minutos reales (promedio)",st.min_prom)}${bar(st.min_prom,0,45,null,"#52607f")}${lv("Minutos proyectados",min)}${bar(min,0,45,null,"var(--acc)")}</div></div>
+ <div class="card"><div class="sec" style="margin-top:0">Descanso y fatiga</div><div class="seg4">${seg.map((x,i)=>`<div class="${i===res.seg?"on":""}">${x[0]}<b>${x[2]}</b>${x[1]}</div>`).join("")}</div>
+  ${lv("Último partido registrado",last||"N/A")}${lv("Próximo partido",fecha||"–")}${lv("Días de descanso",dias)}<div style="margin-top:6px;font-weight:700">${res.desc}</div></div>
+ <div class="card"><div class="sec" style="margin-top:0">Ritmo del partido (Pace)</div>
+  ${lv(esc(team)+" ("+mB+")",pT)}${bar(pT,a,b,AVG_PACE,"#38bdf8")}${lv(esc(rival)+" (rival "+mR+")",pR)}${bar(pR,a,b,AVG_PACE,"#a78bfa")}${lv("Combinado",res.pp)}${bar(res.pp,a,b,AVG_PACE,"var(--acc)")}
+  <div class="leg"><span>| línea blanca = media liga ${AVG_PACE}</span></div></div>
+ <div class="card"><div class="sec" style="margin-top:0">Defensa del rival (DefRtg)</div>${lv(esc(rival)+" ("+mR+")",dR)}${bar(dR,AVG_DEF-12,AVG_DEF+12,AVG_DEF,fav?"var(--ok)":"var(--bad)")}
+  <div class="leg"><span>| media liga ${AVG_DEF}</span><b style="color:${fav?"var(--ok)":"var(--bad)"}">${fav?"Favorable":"Difícil"} (${dd>0?"+":""}${r(dd,1)})</b></div></div>
+ <div class="card"><div class="sec" style="margin-top:0">Tiros proyectados</div><div class="ring">
+  <svg width="120" height="120" viewBox="0 0 120 120"><circle cx="60" cy="60" r="48" fill="none" stroke="var(--card2)" stroke-width="12"/><circle cx="60" cy="60" r="48" fill="none" stroke="var(--acc)" stroke-width="12" stroke-linecap="round" stroke-dasharray="${C2*res.fgp/100} ${C2}" transform="rotate(-90 60 60)"/><text x="60" y="66" text-anchor="middle" fill="var(--txt)" font-size="22" font-weight="800">${res.fgp}%</text></svg>
+  <div style="flex:1">${lv("Tiros (FGA)",res.fga)}${lv("Efectividad ajustada",res.fgp+"%")}${lv("Efectividad base",r(st.fg_pct*100,1)+"%")}</div></div></div>
+ <div class="foot">Proyección estimada con el modelo del Colab; no garantiza resultados.</div>`;
+ $("effOut").scrollIntoView({behavior:"smooth",block:"start"});}
+function elegir(el,lista,cb){el.innerHTML='<div class="msg info">Varios resultados, elige uno:<div class="chips">'+lista.map((p,i)=>`<button class="chip" data-i="${i}">${esc(p.nombre)} · ${esc(p.equipo)}</button>`).join("")+"</div></div>";el.querySelectorAll(".chip").forEach(b=>b.onclick=()=>cb(lista[+b.dataset.i]));}
+async function analizarEff(sel){const nom=$("ejug").value.trim(),temp=parseInt($("etemp").value,10),cond=$("econd").value,rival=$("erival").value,fecha=$("efecha").value,min=+$("emin").value,tsel=$("eteam").value,S=$("effStatus");
+ const err=m=>{S.innerHTML='<div class="msg err">'+m+"</div>";};
+ if(!nom&&!sel)return err("Escribe el nombre de un jugador.");if(!temp)return err("Indica una temporada válida (ej: 2027).");if(!rival)return err("Elige el equipo rival.");
+ try{localStorage.setItem("nba_eff_v1",JSON.stringify({j:nom,t:tsel,r:rival,c:cond,y:temp,m:min}));}catch(e){}
+ const b=$("ebtn");b.disabled=true;b.innerHTML='<span class="spin"></span>Calculando…';$("effOut").innerHTML="";
+ try{let j=sel;
+  if(!j){S.innerHTML='<div class="msg info">Cargando jugadores NBA…</div>';if(!IDX)IDX=await cargarIndice();poblarDatalist();const c=buscarCandidatos(IDX,nom);
+   if(!c.length)throw new Error("No se encontró '"+esc(nom)+"' en los rosters actuales de la NBA.");if(c.length>1){elegir(S,c.slice(0,12),analizarEff);return;}j=c[0];}
+  S.innerHTML='<div class="msg info">Descargando partidos de '+esc(j.nombre)+"…</div>";
+  const P=parseEff(await getJSON(GAMELOG+j.id+"/gamelog",{season:temp})),st=P.rows.length?statsEff(P,cond):null;
+  if(!st)throw new Error("Sin partidos con minutos para la temporada "+temp+". Prueba con otra temporada.");
+  let pos=j.pos?posEs(j.pos):"N/A";if(pos==="N/A"){try{const p=((await getJSON(GAMELOG+j.id)).athlete||{}).position||{};pos=posEs(p.displayName||p.abbreviation||p.name);}catch(e){}}
+  const team=tsel!=="AUTO"?tsel:(j.ab?fixAb(j.ab):(P.eq?fixAb(P.eq):null)),dias=fecha&&P.last?Math.max(0,Math.round((Date.parse(fecha)-Date.parse(P.last))/864e5)):2,
+   mB=cond==="VISITANTE"?"VISITANTE":"LOCAL",mR=cond==="LOCAL"?"VISITANTE":"LOCAL",
+   pT=(PACE[team]||{})[mB]||AVG_PACE,pR=(PACE[rival]||{})[mR]||AVG_PACE,dR=(DEFR[rival]||{})[mR]||AVG_DEF;
+  S.innerHTML=team?"":'<div class="msg info">No pude detectar el equipo del jugador: elígelo en "Equipo del jugador" para usar su ritmo real.</div>';
+  renderEff({nom:j.nombre,pos,team:team||"N/D",rival,cond,mB,mR,min,temp,st,res:proyectar(min,st,pT,pR,dR,dias),pT,pR,dR,dias,last:P.last,fecha});
+ }catch(e){err(esc(String(e.message||e)));}finally{b.disabled=false;b.textContent="Calcular eficiencia";}}
+function verVista(v){$("viewLineas").classList.toggle("hidden",v!=="l");$("viewEff").classList.toggle("hidden",v!=="e");document.querySelectorAll(".toptab").forEach(t=>t.classList.toggle("on",t.dataset.v===v));try{localStorage.setItem("nba_view",v);}catch(e){}window.scrollTo(0,0);}
+(function(){document.querySelectorAll(".toptab").forEach(t=>t.onclick=()=>verVista(t.dataset.v));
+ $("eteam").innerHTML='<option value="AUTO">Automático</option>'+EQ.map(x=>`<option value="${x[0]}">${x[0]} – ${x[1]}</option>`).join("");
+ $("erival").innerHTML='<option value="">Elige rival…</option>'+EQ.map(x=>`<option value="${x[0]}">${x[0]} – ${x[1]}</option>`).join("");
+ const h=new Date(),m=new Date(h.getTime()+864e5);$("efecha").value=m.getFullYear()+"-"+String(m.getMonth()+1).padStart(2,"0")+"-"+String(m.getDate()).padStart(2,"0");
+ $("etemp").value=h.getMonth()>=9?h.getFullYear()+1:h.getFullYear();
+ try{const d=JSON.parse(localStorage.getItem("nba_eff_v1")||"null");if(d){$("ejug").value=d.j||"";$("eteam").value=d.t||"AUTO";$("erival").value=d.r||"";$("econd").value=d.c||"LOCAL";if(d.y)$("etemp").value=d.y;if(d.m)$("emin").value=d.m;}}catch(e){}
+ const ay=()=>{const t=parseInt($("etemp").value,10);$("etempHelp").textContent=t?"Temporada NBA "+(t-1)+"-"+t:"";$("eminv").textContent=$("emin").value;};
+ $("etemp").addEventListener("input",ay);$("emin").addEventListener("input",ay);ay();
+ $("ebtn").onclick=()=>analizarEff();$("ejug").addEventListener("keydown",e=>{if(e.key==="Enter")analizarEff();});
+ try{if(localStorage.getItem("nba_view")==="e")verVista("e");}catch(e){}})();
 </script>
 </body>
 </html>
