@@ -159,7 +159,7 @@ input[type=range]{padding:0;border:0;background:none;accent-color:var(--acc)}
       <div class="foot" style="text-align:left">Se guarda solo en este dispositivo.</div>
     </div>
   </details>
-  <div class="foot">v7</div>
+  <div class="foot">v8</div>
 </div>
 
 <div id="status"></div>
@@ -600,7 +600,7 @@ function parseEff(d){const lb=d.labels||[],ev=d.events||{},rows=[],days=[];let e
   const m=ev[e.eventId]||{},o=m.opponent||{},s=e.stats||[];
   if(m.playerTeam&&m.playerTeam.abbreviation)eq=m.playerTeam.abbreviation;
   const g={loc:o.isHome?"VISITANTE":"LOCAL",rv:fixAb(o.abbreviation),fe:(m.gameDate||"").slice(0,10),res:m.gameResult||""};lb.forEach((l,i)=>{if(i<s.length)g[l]=s[i];});
-  ["MIN","PTS","REB","AST"].forEach(k=>g[k]=N(g[k]));rows.push(g);
+  ["MIN","PTS","REB","AST"].forEach(k=>g[k]=N(g[k]));{const t=g["3PT"];g.tpm=typeof t==="string"&&t.includes("-")?N(t.split("-")[0]):N(t);}rows.push(g);
   if(m.gameDate){const x=localDay(m.gameDate);if(x)days.push(x);}}
  return{rows,lb,eq,last:days.sort().pop()||null};}
 function statsEff(P,cond){let fgm=0,fga=0;const c=["FG","FGM-FGA","FGM/FGA"].find(x=>P.lb.includes(x));
@@ -641,6 +641,7 @@ function renderEff(R){const{nom,pos,team,rival,cond,mB,mR,min,temp,st,res,pT,pR,
   <svg width="120" height="120" viewBox="0 0 120 120"><circle cx="60" cy="60" r="48" fill="none" stroke="var(--card2)" stroke-width="12"/><circle cx="60" cy="60" r="48" fill="none" stroke="var(--acc)" stroke-width="12" stroke-linecap="round" stroke-dasharray="${C2*res.fgp/100} ${C2}" transform="rotate(-90 60 60)"/><text x="60" y="66" text-anchor="middle" fill="var(--txt)" font-size="22" font-weight="800">${res.fgp}%</text></svg>
   <div style="flex:1">${lv("Tiros (FGA)",res.fga)}${lv("Efectividad ajustada",res.fgp+"%")}${lv("Efectividad base",r(st.fg_pct*100,1)+"%")}</div></div></div>
  ${histCard(R)}
+ ${lineasCard(R)}
  <div class="foot">Proyección estimada con el modelo del Colab; no garantiza resultados.</div>`;
  $("effOut").scrollIntoView({behavior:"smooth",block:"start"});}
 function histCard(R){const{rival,res,st,pT,pR,dR,dias,hist}=R;
@@ -655,7 +656,24 @@ function histCard(R){const{rival,res,st,pT,pR,dR,dias,hist}=R;
  h+=`<tr><td class="l"><b>Prom. real</b></td><td></td><td>${r(hist.reduce((s,g)=>s+g.MIN,0)/n,1)}</td>`+K.map(([k])=>`<td><b>${av(k)}</b></td>`).join("")+"<td></td></tr>";
  h+=`<tr><td class="l"><b>Proyección</b></td><td></td><td>${R.min}</td>`+K.map(([,p])=>`<td><b>${p}</b></td>`).join("")+"<td></td></tr></tbody></table></div>";
  return h+'<div class="leg" style="margin-top:6px"><span>PRA aj. = proyección con los minutos que jugó en ese partido</span></div></div>';}
+function lineasCard(R){const{rival,res,hist,lineas}=R;
+ let h='<div class="card"><div class="sec" style="margin-top:0">Proyección vs línea vs historial contra '+esc(rival)+"</div>";
+ const M=[["PTS","PTS",res.pts],["REB","REB",res.reb],["AST","AST",res.ast],["3PM","tpm",null]].filter(m=>lineas[m[0]]>0);
+ if(!M.length)return h+'<div class="msg info" style="margin:0">No hay líneas definidas. Escribe al menos una (PTS, REB, AST o 3PM) en la pestaña 📋 Líneas.</div></div>';
+ if(!hist.length)return h+'<div class="msg info" style="margin:0">Sin partidos previos contra '+esc(rival)+" para comparar.</div></div>";
+ const n=hist.length,g=hist.slice().reverse(),W=320,H=125,T=16,B=18,sp=(W-20)/n,bw=Math.min(30,sp-8);
+ M.forEach(([k,f,p])=>{const L=lineas[k],vals=g.map(x=>x[f]),hit=vals.filter(v=>v>=L).length,over=p!==null&&p>=L,ok=p!==null?vals.filter(v=>(v>=L)===over).length:0,
+  mx=Math.max(...vals,L,p||0)*1.2||1,y=v=>H-B-(v/mx)*(H-B-T);
+  h+=`<div style="margin-top:14px"><div class="lv"><b>${k} · línea ${L}</b><span>${p!==null?"Proy. "+p+" → ":"Sin proyección de 3PM"}${p!==null?`<b style="color:${over?"var(--ok)":"var(--bad)"}">${over?"OVER":"UNDER"} (${p-L>=0?"+":""}${r(p-L,1)})</b>`:""}</span></div>
+  <svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block;margin-top:4px">`
+  +vals.map((v,i)=>{const x=10+i*sp+(sp-bw)/2;return`<rect x="${x}" y="${y(v)}" width="${bw}" height="${H-B-y(v)}" rx="3" fill="${v>=L?"#22c55e":"#ef4444"}" opacity=".85"/><text x="${x+bw/2}" y="${y(v)-3}" text-anchor="middle" font-size="9" fill="#e8ecf5">${r(v,1)}</text><text x="${x+bw/2}" y="${H-5}" text-anchor="middle" font-size="8" fill="#8d98b3">${g[i].fe.slice(5)}</text>`;}).join("")
+  +`<line x1="4" x2="${W-4}" y1="${y(L)}" y2="${y(L)}" stroke="#fff" stroke-width="1.5"/><text x="${W-6}" y="${y(L)-3}" text-anchor="end" font-size="9" fill="#fff">línea ${L}</text>`
+  +(p!==null?`<line x1="4" x2="${W-4}" y1="${y(p)}" y2="${y(p)}" stroke="#ff7a1a" stroke-width="2" stroke-dasharray="5 4"/><text x="6" y="${y(p)-3}" font-size="9" fill="#ff7a1a">proy. ${p}</text>`:"")+"</svg>"
+  +`<div class="lv"><span>Pasó la línea</span><b>${hit}/${n} · ${r(hit/n*100,0)}%</b></div>`
+  +(p!==null?`<div class="lv"><span>La señal ${over?"OVER":"UNDER"} coincidió con lo real</span><b style="color:${ok/n>=0.6?"var(--ok)":ok/n>=0.4?"#eab308":"var(--bad)"}">${ok}/${n} · ${r(ok/n*100,0)}%</b></div>`:"")+"</div>";});
+ return h+'<div class="leg" style="margin-top:12px"><span>Barras: verde = real ≥ línea, rojo = no llegó · más reciente a la derecha</span></div><div class="leg"><span>Línea blanca = tu línea · naranja punteada = proyección</span></div></div>';}
 function elegir(el,lista,cb){el.innerHTML='<div class="msg info">Varios resultados, elige uno:<div class="chips">'+lista.map((p,i)=>`<button class="chip" data-i="${i}">${esc(p.nombre)} · ${esc(p.equipo)}</button>`).join("")+"</div></div>";el.querySelectorAll(".chip").forEach(b=>b.onclick=()=>cb(lista[+b.dataset.i]));}
+const ln=id=>{const v=leerLinea(id);return v>0?v:null;};
 async function analizarEff(sel){const nom=$("ejug").value.trim(),temp=parseInt($("etemp").value,10),cond=$("econd").value,rival=$("erival").value,fecha=$("efecha").value,min=+$("emin").value,tsel=$("eteam").value,S=$("effStatus");
  const err=m=>{S.innerHTML='<div class="msg err">'+m+"</div>";};
  if(!nom&&!sel)return err("Escribe el nombre de un jugador.");if(!temp)return err("Indica una temporada válida (ej: 2027).");if(!rival)return err("Elige el equipo rival.");
@@ -676,7 +694,7 @@ async function analizarEff(sel){const nom=$("ejug").value.trim(),temp=parseInt($
   let hist=pick(P.rows,false);
   if(hist.length<7){try{hist=hist.concat(pick(parseEff(await getJSON(GAMELOG+j.id+"/gamelog",{season:temp-1})).rows,true));}catch(e){}}
   hist=hist.slice(0,7);
-  renderEff({nom:j.nombre,pos,team:team||"N/D",rival,cond,mB,mR,min,temp,st,res:proyectar(min,st,pT,pR,dR,dias),pT,pR,dR,dias,last:P.last,fecha,hist});
+  renderEff({nom:j.nombre,pos,team:team||"N/D",rival,cond,mB,mR,min,temp,st,res:proyectar(min,st,pT,pR,dR,dias),pT,pR,dR,dias,last:P.last,fecha,hist,lineas:{PTS:ln("lpts"),REB:ln("lreb"),AST:ln("last"),"3PM":ln("l3pm")}});
  }catch(e){err(esc(String(e.message||e)));}finally{b.disabled=false;b.textContent="Calcular eficiencia";}}
 function verVista(v){$("viewLineas").classList.toggle("hidden",v!=="l");$("viewEff").classList.toggle("hidden",v!=="e");document.querySelectorAll(".toptab").forEach(t=>t.classList.toggle("on",t.dataset.v===v));try{localStorage.setItem("nba_view",v);}catch(e){}window.scrollTo(0,0);}
 (function(){document.querySelectorAll(".toptab").forEach(t=>t.onclick=()=>verVista(t.dataset.v));
