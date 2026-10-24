@@ -159,7 +159,7 @@ input[type=range]{padding:0;border:0;background:none;accent-color:var(--acc)}
       <div class="foot" style="text-align:left">Se guarda solo en este dispositivo.</div>
     </div>
   </details>
-  <div class="foot">v8</div>
+  <div class="foot">v9</div>
 </div>
 
 <div id="status"></div>
@@ -599,7 +599,7 @@ function parseEff(d){const lb=d.labels||[],ev=d.events||{},rows=[],days=[];let e
  for(const st of d.seasonTypes||[])for(const c of st.categories||[])for(const e of c.events||[]){
   const m=ev[e.eventId]||{},o=m.opponent||{},s=e.stats||[];
   if(m.playerTeam&&m.playerTeam.abbreviation)eq=m.playerTeam.abbreviation;
-  const g={loc:o.isHome?"VISITANTE":"LOCAL",rv:fixAb(o.abbreviation),fe:(m.gameDate||"").slice(0,10),res:m.gameResult||""};lb.forEach((l,i)=>{if(i<s.length)g[l]=s[i];});
+  const g={loc:m.atVs?(m.atVs==="@"?"VISITANTE":"LOCAL"):(o.isHome?"VISITANTE":"LOCAL"),rv:fixAb(o.abbreviation),fe:(m.gameDate||"").slice(0,10),res:m.gameResult||""};lb.forEach((l,i)=>{if(i<s.length)g[l]=s[i];});
   ["MIN","PTS","REB","AST"].forEach(k=>g[k]=N(g[k]));{const t=g["3PT"];g.tpm=typeof t==="string"&&t.includes("-")?N(t.split("-")[0]):N(t);}rows.push(g);
   if(m.gameDate){const x=localDay(m.gameDate);if(x)days.push(x);}}
  return{rows,lb,eq,last:days.sort().pop()||null};}
@@ -607,10 +607,10 @@ function statsEff(P,cond){let fgm=0,fga=0;const c=["FG","FGM-FGA","FGM/FGA"].fin
  if(c)P.rows.forEach(g=>{const[a,b]=pFG(g[c]);fgm+=a;fga+=b;});
  else if(P.lb.includes("FGM")&&P.lb.includes("FGA"))P.rows.forEach(g=>{fgm+=N(g.FGM);fga+=N(g.FGA);});
  const base=P.rows.filter(g=>g.MIN>0);let v=base;
- if(cond!=="TODOS"){const f=base.filter(g=>g.loc===cond);if(f.length)v=f;}
+ let fb=false;if(cond!=="TODOS"){const f=base.filter(g=>g.loc===cond);if(f.length)v=f;else fb=true;}
  if(!v.length)return null;let fv=0;if(c)v.forEach(g=>{fv+=pFG(g[c])[1];});else if(P.lb.includes("FGA"))v.forEach(g=>{fv+=N(g.FGA);});
  const t=k=>v.reduce((s,g)=>s+g[k],0),tm=t("MIN"),n=v.length;
- return{pts_min:tm>0?r(t("PTS")/tm,3):0,reb_min:tm>0?r(t("REB")/tm,3):0,ast_min:tm>0?r(t("AST")/tm,3):0,fga_min:r(tm>0?fv/tm:0.44,3),fg_pct:r(fga>0?fgm/fga:0.47,3),min_prom:r(tm/n,1),n,real:{PTS:t("PTS")/n,REB:t("REB")/n,AST:t("AST")/n}};}
+ return{pts_min:tm>0?r(t("PTS")/tm,3):0,reb_min:tm>0?r(t("REB")/tm,3):0,ast_min:tm>0?r(t("AST")/tm,3):0,fga_min:r(tm>0?fv/tm:0.44,3),fg_pct:r(fga>0?fgm/fga:0.47,3),min_prom:r(tm/n,1),n,fb,real:{PTS:t("PTS")/n,REB:t("REB")/n,AST:t("AST")/n}};}
 function factorDesc(d){return d===0?[0.95,"⚠️ Back-to-Back (Fatiga: -5%)",0]:d===1?[1.0,"✅ Ritmo Normal (1 día de descanso)",1]:(d===2||d===3)?[1.03,"🚀 Descanso Óptimo (+3% efectividad)",2]:[0.98,"⚠️ Descanso Prolongado (Posible pérdida de ritmo: -2%)",3];}
 function proyectar(min,st,pe,pr,dr,dias){const pp=(pe+pr)/2,fp=pp/AVG_PACE,fd=dr/AVG_DEF,[ff,desc,seg]=factorDesc(dias);
  const fga=(min*st.fga_min)*fp*ff,fgp=Math.min(st.fg_pct*fd*ff,0.70),pts=fga*fgp*2.15+(min*(st.pts_min*0.22))*fp*ff,reb=(min*st.reb_min)*fp*ff,ast=(min*st.ast_min)*fp*ff;
@@ -689,7 +689,7 @@ async function analizarEff(sel){const nom=$("ejug").value.trim(),temp=parseInt($
   const team=tsel!=="AUTO"?tsel:(j.ab?fixAb(j.ab):(P.eq?fixAb(P.eq):null)),dias=fecha&&P.last?Math.max(0,Math.round((Date.parse(fecha)-Date.parse(P.last))/864e5)-1):2,
    mB=cond==="VISITANTE"?"VISITANTE":"LOCAL",mR=cond==="LOCAL"?"VISITANTE":"LOCAL",
    pT=(PACE[team]||{})[mB]||AVG_PACE,pR=(PACE[rival]||{})[mR]||AVG_PACE,dR=(DEFR[rival]||{})[mR]||AVG_DEF;
-  S.innerHTML=team?"":'<div class="msg info">No pude detectar el equipo del jugador: elígelo en "Equipo del jugador" para usar su ritmo real.</div>';
+  S.innerHTML=(team?"":'<div class="msg info">No pude detectar el equipo del jugador: elígelo en "Equipo del jugador" para usar su ritmo real.</div>')+(st.fb?'<div class="msg info">Aún no hay partidos de '+(cond==="LOCAL"?"local":"visita")+" esta temporada: se usaron todos los partidos.</div>":"");
   const pick=(rows,old)=>rows.filter(g=>g.rv===rival&&g.MIN>0).sort((a,b)=>b.fe.localeCompare(a.fe)).map(g=>({...g,old}));
   let hist=pick(P.rows,false);
   if(hist.length<7){try{hist=hist.concat(pick(parseEff(await getJSON(GAMELOG+j.id+"/gamelog",{season:temp-1})).rows,true));}catch(e){}}
