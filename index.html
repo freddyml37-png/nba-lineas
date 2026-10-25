@@ -159,7 +159,7 @@ input[type=range]{padding:0;border:0;background:none;accent-color:var(--acc)}
       <div class="foot" style="text-align:left">Se guarda solo en este dispositivo.</div>
     </div>
   </details>
-  <div class="foot">v10</div>
+  <div class="foot">v11</div>
 </div>
 
 <div id="status"></div>
@@ -608,9 +608,9 @@ function statsEff(P,cond){let fgm=0,fga=0;const c=["FG","FGM-FGA","FGM/FGA"].fin
  else if(P.lb.includes("FGM")&&P.lb.includes("FGA"))P.rows.forEach(g=>{fgm+=N(g.FGM);fga+=N(g.FGA);});
  const base=P.rows.filter(g=>g.MIN>0);let v=base;
  let fb=false,nf=0;if(cond!=="TODOS"){const f=base.filter(g=>g.loc===cond);nf=f.length;if(nf>=MIN_SPLIT)v=f;else fb=true;}
- if(!v.length)return null;let fv=0;if(c)v.forEach(g=>{fv+=pFG(g[c])[1];});else if(P.lb.includes("FGA"))v.forEach(g=>{fv+=N(g.FGA);});
+ if(!v.length)return null;let fv=0,vm=0;if(c)v.forEach(g=>{const[a,b]=pFG(g[c]);vm+=a;fv+=b;});else if(P.lb.includes("FGA"))v.forEach(g=>{fv+=N(g.FGA);vm+=N(g.FGM);});
  const t=k=>v.reduce((s,g)=>s+g[k],0),tm=t("MIN"),n=v.length;
- return{pts_min:tm>0?r(t("PTS")/tm,3):0,reb_min:tm>0?r(t("REB")/tm,3):0,ast_min:tm>0?r(t("AST")/tm,3):0,fga_min:r(tm>0?fv/tm:0.44,3),fg_pct:r(fga>0?fgm/fga:0.47,3),min_prom:r(tm/n,1),n,fb,nf,real:{PTS:t("PTS")/n,REB:t("REB")/n,AST:t("AST")/n}};}
+ return{pts_min:tm>0?r(t("PTS")/tm,3):0,reb_min:tm>0?r(t("REB")/tm,3):0,ast_min:tm>0?r(t("AST")/tm,3):0,fga_min:r(tm>0?fv/tm:0.44,3),fg_pct:r(fv>0?vm/fv:0.47,3),min_prom:r(tm/n,1),n,fb,nf,real:{PTS:t("PTS")/n,REB:t("REB")/n,AST:t("AST")/n}};}
 function factorDesc(d){return d===0?[0.95,"⚠️ Back-to-Back (Fatiga: -5%)",0]:d===1?[1.0,"✅ Ritmo Normal (1 día de descanso)",1]:(d===2||d===3)?[1.03,"🚀 Descanso Óptimo (+3% efectividad)",2]:[0.98,"⚠️ Descanso Prolongado (Posible pérdida de ritmo: -2%)",3];}
 function proyectar(min,st,pe,pr,dr,dias){const pp=(pe+pr)/2,fp=pp/AVG_PACE,fd=dr/AVG_DEF,[ff,desc,seg]=factorDesc(dias);
  const fga=(min*st.fga_min)*fp*ff,fgp=Math.min(st.fg_pct*fd*ff,0.70),pts=fga*fgp*2.15+(min*(st.pts_min*0.22))*fp*ff,reb=(min*st.reb_min)*fp*ff,ast=(min*st.ast_min)*fp*ff;
@@ -627,7 +627,7 @@ function renderEff(R){const{nom,pos,team,rival,cond,mB,mR,min,temp,st,res,pT,pR,
   <div class="k" style="color:var(--mut);font-size:12px">PRA TOTAL PROYECTADO</div><div class="big">${res.pra}</div>
   <div class="stk"><i style="width:${res.pts/tot*100}%;background:${C.PTS}"></i><i style="width:${res.reb/tot*100}%;background:${C.REB}"></i><i style="width:${res.ast/tot*100}%;background:${C.AST}"></i></div>
   <div class="leg"><span style="color:${C.PTS}">● PTS ${res.pts}</span><span style="color:${C.REB}">● REB ${res.reb}</span><span style="color:${C.AST}">● AST ${res.ast}</span></div></div>
- <div class="card"><div class="sec" style="margin-top:0">Proyección vs promedio real (${st.n} partidos)</div><div class="grid3">${tile("PTS","Puntos")}${tile("REB","Rebotes")}${tile("AST","Asist.")}</div>
+ <div class="card"><div class="sec" style="margin-top:0">Proyección vs promedio real${cond!=="TODOS"&&!st.fb?" como "+(cond==="LOCAL"?"local":"visita"):""} (${st.n} partidos)</div><div class="grid3">${tile("PTS","Puntos")}${tile("REB","Rebotes")}${tile("AST","Asist.")}</div>
   <div class="leg" style="margin-top:8px"><span>▬ gris: promedio real</span><span>▬ color: proyección</span></div>
   <div style="margin-top:10px">${lv("Minutos reales (promedio)",st.min_prom)}${bar(st.min_prom,0,45,null,"#52607f")}${lv("Minutos proyectados",min)}${bar(min,0,45,null,"var(--acc)")}</div></div>
  <div class="card"><div class="sec" style="margin-top:0">Descanso y fatiga</div><div class="seg4">${seg.map((x,i)=>`<div class="${i===res.seg?"on":""}">${x[0]}<b>${x[2]}</b>${x[1]}</div>`).join("")}</div>
@@ -653,7 +653,9 @@ function histCard(R){const{rival,res,st,pT,pR,dR,dias,hist}=R;
  h+='<div class="scroll" style="margin-top:8px"><table><thead><tr><th class="l">Fecha</th><th>L/V</th><th>MIN</th><th>PTS</th><th>REB</th><th>AST</th><th>PRA</th><th>PRA aj.</th></tr></thead><tbody>';
  hist.forEach(g=>{h+=`<tr><td class="l">${g.fe}</td><td>${g.loc==="LOCAL"?"L":"V"}</td><td>${g.MIN}</td>`+K.map(([k,p])=>`<td class="${val(g,k)>=p?"ok":"no"}">${r(val(g,k),1)}</td>`).join("")+`<td>${proyectar(g.MIN,st,pT,pR,dR,dias).pra}</td></tr>`;});
  const av=k=>r(hist.reduce((s,g)=>s+val(g,k),0)/n,1);
- h+=`<tr><td class="l"><b>Prom. real</b></td><td></td><td>${r(hist.reduce((s,g)=>s+g.MIN,0)/n,1)}</td>`+K.map(([k])=>`<td><b>${av(k)}</b></td>`).join("")+"<td></td></tr>";
+ h+=`<tr><td class="l"><b>Prom. total</b></td><td></td><td>${r(hist.reduce((s,g)=>s+g.MIN,0)/n,1)}</td>`+K.map(([k])=>`<td><b>${av(k)}</b></td>`).join("")+"<td></td></tr>";
+ const hv=R.cond==="TODOS"?[]:hist.filter(g=>g.loc===R.cond),av2=k=>r(hv.reduce((s,g)=>s+val(g,k),0)/hv.length,1);
+ if(hv.length)h+=`<tr><td class="l"><b>Prom. ${R.cond==="LOCAL"?"local":"visita"} (${hv.length})</b></td><td></td><td>${r(hv.reduce((s,g)=>s+g.MIN,0)/hv.length,1)}</td>`+K.map(([k])=>`<td><b>${av2(k)}</b></td>`).join("")+"<td></td></tr>";
  h+=`<tr><td class="l"><b>Proyección</b></td><td></td><td>${R.min}</td>`+K.map(([,p])=>`<td><b>${p}</b></td>`).join("")+"<td></td></tr></tbody></table></div>";
  return h+'<div class="leg" style="margin-top:6px"><span>PRA aj. = proyección con los minutos que jugó en ese partido</span></div></div>';}
 function lineasCard(R){const{rival,res,hist,lineas}=R;
@@ -673,6 +675,7 @@ function lineasCard(R){const{rival,res,hist,lineas}=R;
   +(p!==null?`<div class="lv"><span>La señal ${over?"OVER":"UNDER"} coincidió con lo real</span><b style="color:${ok/n>=0.6?"var(--ok)":ok/n>=0.4?"#eab308":"var(--bad)"}">${ok}/${n} · ${r(ok/n*100,0)}%</b></div>`:"")+"</div>";});
  return h+'<div class="leg" style="margin-top:12px"><span>Barras: verde = real ≥ línea, rojo = no llegó · más reciente a la derecha</span></div><div class="leg"><span>Línea blanca = tu línea · naranja punteada = proyección</span></div></div>';}
 function elegir(el,lista,cb){el.innerHTML='<div class="msg info">Varios resultados, elige uno:<div class="chips">'+lista.map((p,i)=>`<button class="chip" data-i="${i}">${esc(p.nombre)} · ${esc(p.equipo)}</button>`).join("")+"</div></div>";el.querySelectorAll(".chip").forEach(b=>b.onclick=()=>cb(lista[+b.dataset.i]));}
+const sp=(T,tb,m,d)=>{const o=tb[T]||{};return m==="TODOS"?(o.LOCAL!=null&&o.VISITANTE!=null?(o.LOCAL+o.VISITANTE)/2:d):(o[m]||d);};
 const ln=id=>{const v=leerLinea(id);return v>0?v:null;};
 async function analizarEff(sel){const nom=$("ejug").value.trim(),temp=parseInt($("etemp").value,10),cond=$("econd").value,rival=$("erival").value,fecha=$("efecha").value,min=+$("emin").value,tsel=$("eteam").value,S=$("effStatus");
  const err=m=>{S.innerHTML='<div class="msg err">'+m+"</div>";};
@@ -687,8 +690,8 @@ async function analizarEff(sel){const nom=$("ejug").value.trim(),temp=parseInt($
   if(!st)throw new Error("Sin partidos con minutos para la temporada "+temp+". Prueba con otra temporada.");
   let pos=j.pos?posEs(j.pos):"N/A";if(pos==="N/A"){try{const p=((await getJSON(GAMELOG+j.id)).athlete||{}).position||{};pos=posEs(p.displayName||p.abbreviation||p.name);}catch(e){}}
   const team=tsel!=="AUTO"?tsel:(j.ab?fixAb(j.ab):(P.eq?fixAb(P.eq):null)),dias=fecha&&P.last?Math.max(0,Math.round((Date.parse(fecha)-Date.parse(P.last))/864e5)-1):2,
-   mB=cond==="VISITANTE"?"VISITANTE":"LOCAL",mR=cond==="LOCAL"?"VISITANTE":"LOCAL",
-   pT=(PACE[team]||{})[mB]||AVG_PACE,pR=(PACE[rival]||{})[mR]||AVG_PACE,dR=(DEFR[rival]||{})[mR]||AVG_DEF;
+   mB=cond==="TODOS"?"TODOS":cond==="VISITANTE"?"VISITANTE":"LOCAL",mR=cond==="TODOS"?"TODOS":cond==="LOCAL"?"VISITANTE":"LOCAL",
+   pT=sp(team,PACE,mB,AVG_PACE),pR=sp(rival,PACE,mR,AVG_PACE),dR=sp(rival,DEFR,mR,AVG_DEF);
   S.innerHTML=(team?"":'<div class="msg info">No pude detectar el equipo del jugador: elígelo en "Equipo del jugador" para usar su ritmo real.</div>')+(st.fb?'<div class="msg info">Solo hay '+st.nf+" partido(s) de "+(cond==="LOCAL"?"local":"visita")+" esta temporada (mínimo "+MIN_SPLIT+"): se usaron todos los partidos.</div>":"")+(st.n<MIN_SPLIT?'<div class="msg err">Muestra muy chica ('+st.n+" partido(s)): la proyección es poco confiable.</div>":"");
   const pick=(rows,old)=>rows.filter(g=>g.rv===rival&&g.MIN>0).sort((a,b)=>b.fe.localeCompare(a.fe)).map(g=>({...g,old}));
   let hist=pick(P.rows,false);
