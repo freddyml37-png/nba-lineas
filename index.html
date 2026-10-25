@@ -159,7 +159,7 @@ input[type=range]{padding:0;border:0;background:none;accent-color:var(--acc)}
       <div class="foot" style="text-align:left">Se guarda solo en este dispositivo.</div>
     </div>
   </details>
-  <div class="foot">v13</div>
+  <div class="foot">v13.1</div>
 </div>
 
 <div id="status"></div>
@@ -603,7 +603,7 @@ function parseEff(d){const lb=d.labels||[],ev=d.events||{},rows=[],days=[];let e
  for(const st of d.seasonTypes||[])for(const c of st.categories||[])for(const e of c.events||[]){
   const m=ev[e.eventId]||{},o=m.opponent||{},s=e.stats||[];
   if(m.playerTeam&&m.playerTeam.abbreviation)eq=m.playerTeam.abbreviation;
-  const g={loc:m.atVs?(m.atVs==="@"?"VISITANTE":"LOCAL"):(o.isHome?"VISITANTE":"LOCAL"),rv:fixAb(o.abbreviation),fe:(m.gameDate||"").slice(0,10),res:m.gameResult||"",tm:fixAb(m.playerTeam&&m.playerTeam.abbreviation)};lb.forEach((l,i)=>{if(i<s.length)g[l]=s[i];});
+  const g={loc:m.atVs?(m.atVs==="@"?"VISITANTE":"LOCAL"):(o.isHome?"VISITANTE":"LOCAL"),rv:fixAb(o.abbreviation),fe:(m.gameDate||"").slice(0,10),res:m.gameResult||"",tm:fixAb(m.playerTeam&&m.playerTeam.abbreviation),pre:/pre/i.test(st.displayName||"")};lb.forEach((l,i)=>{if(i<s.length)g[l]=s[i];});
   ["MIN","PTS","REB","AST"].forEach(k=>g[k]=N(g[k]));{const t=g["3PT"];g.tpm=typeof t==="string"&&t.includes("-")?N(t.split("-")[0]):N(t);}rows.push(g);
   if(m.gameDate){const x=localDay(m.gameDate);if(x)days.push(x);}}
  return{rows,lb,eq,last:days.sort().pop()||null};}
@@ -701,6 +701,7 @@ async function analizarEff(sel){const nom=$("ejug").value.trim(),temp=parseInt($
   const getP2=async()=>P2||(P2=await getJSON(GAMELOG+j.id+"/gamelog",{season:temp-1}).then(parseEff).catch(()=>VACIO));
   let pl=pool(P.rows,cond);const nAct=pl.length;let nAnt=0;
   if(pl.length<MIN_MUESTRA){const ex=pool((await getP2()).rows,cond).sort((a,b)=>b.fe.localeCompare(a.fe)).slice(0,MIN_MUESTRA-pl.length).map(g=>({...g,old:true}));nAnt=ex.length;pl=pl.concat(ex);}
+  const tot=P.rows.filter(g=>g.MIN>0),nPre=tot.filter(g=>g.pre).length,nReg=tot.length-nPre;
   const st=pl.length?statsEff({lb:P.lb.length?P.lb:(P2||VACIO).lb},pl):null;
   if(!st)throw new Error("Sin partidos con minutos en "+(temp-1)+"-"+temp+" ni en la temporada anterior"+(e0?" ("+esc(String(e0.message||e0))+")":"")+".");
   let pos=j.pos?posEs(j.pos):"N/A";if(pos==="N/A"){try{const p=((await getJSON(GAMELOG+j.id)).athlete||{}).position||{};pos=posEs(p.displayName||p.abbreviation||p.name);}catch(e){}}
@@ -708,7 +709,7 @@ async function analizarEff(sel){const nom=$("ejug").value.trim(),temp=parseInt($
    mB=cond==="TODOS"?"TODOS":cond==="VISITANTE"?"VISITANTE":"LOCAL",mR=cond==="TODOS"?"TODOS":cond==="LOCAL"?"VISITANTE":"LOCAL",
    pT=sp(team,PACING_EQUIPOS_SPLIT,mB,AVG_PACE),pR=sp(rival,PACING_EQUIPOS_SPLIT,mR,AVG_PACE),dR=sp(rival,DEFRTG_SPLIT,mR,AVG_DEF),
    bl={bpT:baseSplit("pace",mB),bpR:baseSplit("pace",mR),bp:(baseSplit("pace",mB)+baseSplit("pace",mR))/2,bd:baseSplit("def",mR)},bs=baseRivales(pl,team,bl),
-   usoAnt=nAnt>0,aviso=(usoAnt?"⚠️ Se está usando la temporada anterior ("+(temp-2)+"-"+(temp-1)+") para completar la muestra: "+nAct+" partido(s) de "+(temp-1)+"-"+temp+" + "+nAnt+" de "+(temp-2)+"-"+(temp-1)+" (mínimo "+MIN_MUESTRA+").":"")+(st.n<MIN_MUESTRA?(usoAnt?" ":"⚠️ ")+"Solo hay "+st.n+" partido(s) disponibles: muestra chica, proyección poco confiable.":"");
+   usoAnt=nAnt>0,aviso=(usoAnt?"⚠️ Se está usando la temporada anterior ("+(temp-2)+"-"+(temp-1)+") para completar la muestra. En "+(temp-1)+"-"+temp+" hay "+tot.length+" partido(s) jugados ("+nReg+" de temporada regular + "+nPre+" de preseason)"+(cond==="TODOS"?"":" y "+(nAct===1?"solo 1 fue":"solo "+nAct+" fueron")+" de "+(cond==="LOCAL"?"local":"visita"))+". Se usan esos "+nAct+" + "+nAnt+" de "+(temp-2)+"-"+(temp-1)+" (mínimo "+MIN_MUESTRA+").":"")+(st.n<MIN_MUESTRA?(usoAnt?" ":"⚠️ ")+"Solo hay "+st.n+" partido(s) disponibles: muestra chica, proyección poco confiable.":"");
   S.innerHTML=team?"":'<div class="msg info">No pude detectar el equipo del jugador: elígelo en "Equipo del jugador" para usar su ritmo real.</div>';
   const pick=(rows,old)=>rows.filter(g=>g.rv===rival&&g.MIN>0).sort((a,b)=>b.fe.localeCompare(a.fe)).map(g=>({...g,old}));
   let hist=pick(P.rows,false);
