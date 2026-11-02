@@ -107,6 +107,10 @@ input[type=range]{padding:0;border:0;background:none;accent-color:var(--acc)}
 .seg4>div.on{border-color:var(--acc);color:var(--txt);background:rgba(255,122,26,.14)}
 .seg4 b{display:block;font-size:14px;color:var(--txt)}
 .ring{display:flex;align-items:center;gap:14px}
+.xp{display:inline-block;width:22px;height:22px;line-height:22px;text-align:center;border-radius:6px;background:var(--card2);color:var(--acc);font-weight:900;cursor:pointer;margin-right:6px;user-select:none}
+tr.det>td{background:var(--card2);padding:0}
+.dq{position:sticky;left:0;width:calc(100vw - 30px);box-sizing:border-box;padding:10px 12px;white-space:normal;text-align:left;font-size:13px}
+.dq table{width:100%}.dq td,.dq th{background:transparent;position:static}
 </style>
 </head>
 <body>
@@ -159,7 +163,7 @@ input[type=range]{padding:0;border:0;background:none;accent-color:var(--acc)}
       <div class="foot" style="text-align:left">Se guarda solo en este dispositivo.</div>
     </div>
   </details>
-  <div class="foot">v13.1</div>
+  <div class="foot">v14</div>
 </div>
 
 <div id="status"></div>
@@ -340,7 +344,8 @@ function parseGamelog(data, temporada) {
           REB: num(col(stats, "REB", "0")),
           "3PM": num(tresM),
           AST: num(col(stats, "AST", "0")),
-          Tipo: tipo
+          Tipo: tipo,
+          eid: ev.eventId
         });
       }
     }
@@ -507,7 +512,7 @@ function render() {
   h += "<th class='l'>Tipo</th></tr></thead><tbody>";
   res.ev.forEach((f, i) => {
     const c = s => lineas[s] === null ? "" : (f.cumple[s] ? ' class="ok"' : ' class="no"');
-    h += '<tr><td class="sticky">' + (i + 1) + '</td><td class="l">' + f.Fecha + '</td><td class="l">' + esc(f.Partido) + "</td><td>" + f.LV + "</td><td>" + esc(f.R) + "</td><td>" + fmt(f.MIN, 0) +
+    h += '<tr><td class="sticky"><span class="xp" data-i="' + i + '">＋</span>' + (i + 1) + '</td><td class="l">' + f.Fecha + '</td><td class="l">' + esc(f.Partido) + "</td><td>" + f.LV + "</td><td>" + esc(f.R) + "</td><td>" + fmt(f.MIN, 0) +
       "</td><td" + c("PTS") + ">" + fmt(f.PTS, 0) + "</td><td" + c("REB") + ">" + fmt(f.REB, 0) + "</td><td" + c("3PM") + ">" + fmt(f["3PM"], 0) + "</td><td" + c("AST") + ">" + fmt(f.AST, 0) + "</td>";
     act.forEach(s => h += "<td" + (f.cumple[s] ? ' class="ok">SÍ' : ' class="no">NO') + "</td>");
     if (act.length) h += "<td" + (f.combo ? ' class="ok">SÍ' : ' class="no">NO') + "</td>";
@@ -728,6 +733,38 @@ function verVista(v){$("viewLineas").classList.toggle("hidden",v!=="l");$("viewE
  $("etemp").addEventListener("input",ay);$("emin").addEventListener("input",ay);ay();
  $("ebtn").onclick=()=>analizarEff();$("ejug").addEventListener("keydown",e=>{if(e.key==="Enter")analizarEff();});
  try{if(localStorage.getItem("nba_view")==="e")verVista("e");}catch(e){}})();
+
+/* ===== DETALLE POR CUARTOS (play-by-play de ESPN, se carga al expandir) ===== */
+const QC={};
+const clk=c=>{if(!c)return null;if(typeof c.value==="number")return c.value;const t=String(c.displayValue||"");if(t.includes(":")){const[a,b]=t.split(":");return+a*60+parseFloat(b);}const x=parseFloat(t);return isNaN(x)?null:x;};
+function cuartosDe(sm,pid,nombre){const plays=sm.plays||[];if(!plays.length)return null;pid=String(pid);const nm=normalize(nombre);let on=false;
+ for(const t of(sm.boxscore&&sm.boxscore.players)||[])for(const g of t.statistics||[])for(const a of g.athletes||[])if(a.athlete&&String(a.athlete.id)===pid)on=!!a.starter;
+ const B={},bk=p=>B[p]||(B[p]={min:0,pts:0,reb:0,tpm:0,ast:0});let cur=null,last=0;
+ for(const p of plays){const per=p.period&&p.period.number;if(!per)continue;const len=per<=4?720:300,cs=clk(p.clock),t=Math.max(0,Math.min(len,len-(cs===null?len:cs)));
+  if(per!==cur){if(cur!==null&&on)bk(cur).min+=(cur<=4?720:300)-last;cur=per;last=0;}
+  bk(per);if(on)bk(per).min+=Math.max(0,t-last);last=t;
+  const ty=(p.type&&p.type.text)||"",tx=String(p.text||""),ps=(p.participants||[]).map(x=>String(x.athlete&&x.athlete.id));
+  const m=tx.match(/^(.*?) enters the game for (.*)$/i);
+  if(m){const en=normalize(m[1]),out=normalize(m[2]);if(en===nm)on=true;else if(out===nm)on=false;continue;}
+  if(p.scoringPlay){const sv=p.scoreValue||0;if(ps[0]===pid){bk(per).pts+=sv;if(sv===3)bk(per).tpm++;}if(ps[1]===pid)bk(per).ast++;}
+  else if(/rebound/i.test(ty)&&ps[0]===pid)bk(per).reb++;}
+ if(cur!==null&&on)bk(cur).min+=(cur<=4?720:300)-last;
+ return{b:B};}
+function pintaQ(Q,f){
+ if(!Q)return'<span style="color:var(--mut)">ESPN no trae play-by-play de este partido (es común en preseason), así que no hay detalle por cuartos.</span>';
+ const ks=Object.keys(Q.b).map(Number).sort((a,b)=>a-b),T={min:0,pts:0,reb:0,tpm:0,ast:0};
+ let h='<table><thead><tr><th class="l">Cuarto</th><th>MIN</th><th>PTS</th><th>REB</th><th>3PM</th><th>AST</th></tr></thead><tbody>';
+ ks.forEach(p=>{const b=Q.b[p];for(const k in T)T[k]+=b[k];h+=`<tr><td class="l">${p<=4?p+"° cuarto":"OT"+(p-4)}</td><td>${Math.round(b.min/60)}</td><td>${b.pts}</td><td>${b.reb}</td><td>${b.tpm}</td><td>${b.ast}</td></tr>`;});
+ h+=`<tr><td class="l"><b>Total</b></td><td><b>${Math.round(T.min/60)}</b></td><td><b>${T.pts}</b></td><td><b>${T.reb}</b></td><td><b>${T.tpm}</b></td><td><b>${T.ast}</b></td></tr></tbody></table>`;
+ const ok=T.pts===f.PTS&&T.reb===f.REB&&T.tpm===f["3PM"]&&T.ast===f.AST;
+ return h+`<div style="margin-top:6px;color:${ok?"var(--ok)":"#eab308"}">${ok?"✓ La suma de cuartos coincide con el total del partido.":"⚠️ La suma de cuartos no coincide exacto con el total oficial ("+f.PTS+" PTS · "+f.REB+" REB · "+f["3PM"]+" 3PM · "+f.AST+" AST)."}</div><div style="color:var(--mut);font-size:11px;margin-top:2px">Minutos estimados con las sustituciones (oficial: ${f.MIN}).</div>`;}
+async function toggleQ(x){const tr=x.closest("tr"),nx=tr.nextElementSibling;
+ if(nx&&nx.classList.contains("det")){nx.remove();x.textContent="＋";return;}
+ x.textContent="－";const f=ESTADO.res.ev[+x.dataset.i],d=document.createElement("tr");d.className="det";
+ d.innerHTML='<td colspan="'+tr.children.length+'"><div class="dq">Cargando cuartos…</div></td>';tr.after(d);const box=d.querySelector(".dq"),k=f.eid+"_"+ESTADO.jug.id;
+ try{if(!(k in QC))QC[k]=cuartosDe(await getJSON(BASE+"/summary",{event:f.eid}),ESTADO.jug.id,ESTADO.jug.nombre);box.innerHTML=pintaQ(QC[k],f);}
+ catch(e){box.innerHTML='<span style="color:#ffb4b4">No se pudieron cargar los cuartos ('+esc(String(e.message||e))+').</span>';}}
+$("tabla").addEventListener("click",e=>{const x=e.target.closest(".xp");if(x)toggleQ(x);});
 </script>
 </body>
 </html>
