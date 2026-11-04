@@ -169,7 +169,7 @@ tr.det>td{background:var(--card2);padding:0}
       <div class="foot" style="text-align:left">Se guarda solo en este dispositivo.</div>
     </div>
   </details>
-  <div class="foot">v15</div>
+  <div class="foot">v15.1</div>
 </div>
 
 <div id="status"></div>
@@ -225,6 +225,7 @@ tr.det>td{background:var(--card2);padding:0}
   <input id="emin" type="range" min="15" max="42" step="1" value="25">
   <button class="go" id="ebtn">Calcular eficiencia</button>
   <div class="foot" id="etempHelp"></div>
+  <div class="foot" id="ehint"></div>
  </div>
  <div id="effStatus"></div>
  <div id="effOut"></div>
@@ -232,10 +233,11 @@ tr.det>td{background:var(--card2);padding:0}
 
 <div id="viewUsage" class="hidden">
  <div class="card">
-  <div class="row"><div><label for="uteam">Equipo</label><select id="uteam"></select></div></div>
-  <div class="row"><div><label for="ugames">Últimos partidos jugados a analizar</label><input id="ugames" type="number" inputmode="numeric" min="1" max="30" value="10"></div></div>
+  <div class="row"><div><label for="uteam">Equipo</label><select id="uteam"></select><div class="foot" id="uhint" style="text-align:left"></div></div></div>
+  <div class="row r2"><div><label for="useason">Temporada</label><input id="useason" type="number" inputmode="numeric"></div><div><label for="ugames">Partidos (10 a 120)</label><input id="ugames" type="number" inputmode="numeric" min="10" max="120" value="10"></div></div>
+  <div class="row"><div><label for="utipo">Partidos incluidos</label><select id="utipo"><option value="todos">Todos (preseason + regular + playoffs)</option><option value="regular">Solo temporada regular</option><option value="playoffs">Solo playoffs</option><option value="pre">Solo preseason</option></select></div></div>
   <button class="go" id="ubtn">Analizar usage</button>
-  <div class="foot">Usa los boxscores de ESPN de los últimos partidos jugados del equipo.</div>
+  <div class="foot">Usa los boxscores de ESPN de los últimos partidos jugados del equipo en esa temporada. Con muchos partidos puede tardar un poco.</div>
  </div>
  <div id="usStatus"></div>
  <div id="usOut"></div>
@@ -482,6 +484,7 @@ async function analizar(playerSel) {
     ESTADO = { jug, temporada, filtro, lineas, filas, res };
     setStatus("");
     render();
+    syncDesdeLineas(jug);
     $("formCard").scrollIntoView({ behavior: "smooth", block: "start" });
   } catch (e) {
     const m = String(e.message || e);
@@ -801,28 +804,38 @@ function calcUsage(perGame,nEv){const T={};
   D.push({Jugador:name,PJ:p.GP,MPG:rp(mpg,1),PPG:rp(p.PTS/p.GP,1),"Mín PTS":mn,"Piso P25":rp(p25,1),"Piso Promedio":rp((mn+p25)/2,1),APG:rp(p.AST/p.GP,1),"FG%":rp(fg,1),
    "% Puntos Propios":rp(tot>0?p.PTS/tot*100:0,1),"Scoring Load (p/36m)":rp(p.MIN>0?(p.PTS+1.4*p.AST)/p.MIN*36:0,1),"Índice Prod.":rp(p.MIN>0?p.PTS*(fg/100)/p.MIN*10:0,2),"Pts Generados/P":rp((p.PTS+p.AST*2.2)/p.GP,1)});}
  D.sort((a,b)=>b["Índice Prod."]-a["Índice Prod."]);D.forEach(d=>{d.rol=rolUsage(d);});return D;}
-async function analizarUsage(){const q=$("uteam").value.trim(),n=Math.max(1,Math.min(30,parseInt($("ugames").value,10)||10)),S=$("usStatus"),b=$("ubtn");
+const TIPOS={todos:[1,2,3],regular:[2],playoffs:[3],pre:[1]},TIPO_TXT={todos:"preseason + regular + playoffs",regular:"temporada regular",playoffs:"playoffs",pre:"preseason"};
+async function analizarUsage(){const q=$("uteam").value.trim(),n=Math.max(10,Math.min(120,parseInt($("ugames").value,10)||10)),temp=parseInt($("useason").value,10),tipo=$("utipo").value,S=$("usStatus"),b=$("ubtn");
+ $("ugames").value=n;
  if(!q){S.innerHTML='<div class="msg err">Elige un equipo.</div>';return;}
- try{localStorage.setItem("nba_us_v1",JSON.stringify({t:q,n}));}catch(e){}
+ if(!temp||temp<1947){S.innerHTML='<div class="msg err">Indica una temporada válida (ej: 2027).</div>';return;}
+ try{localStorage.setItem("nba_us_v2",JSON.stringify({t:q,n,y:temp,k:tipo}));}catch(e){}
  b.disabled=true;b.innerHTML='<span class="spin"></span>Analizando…';$("usOut").innerHTML="";
  try{S.innerHTML='<div class="msg info">Buscando equipo…</div>';const ql=q.toLowerCase();
   const te=(await getJSON(BASE+"/teams")).sports[0].leagues[0].teams.map(x=>x.team).find(t=>t.displayName.toLowerCase().includes(ql)||(t.shortDisplayName||"").toLowerCase().includes(ql));
   if(!te)throw new Error("No se encontró ningún equipo que coincida con '"+esc(q)+"'.");
-  S.innerHTML='<div class="msg info">Descargando calendario de '+esc(te.displayName)+"…</div>";
-  const ev=((await getJSON(BASE+"/teams/"+te.id+"/schedule")).events||[]).filter(e=>{try{return e.competitions[0].status.type.completed;}catch(_){return false;}}),rec=ev.slice(-n);
-  if(!rec.length)throw new Error("No hay partidos jugados para analizar.");
+  S.innerHTML='<div class="msg info">Descargando calendario de '+esc(te.displayName)+" ("+(temp-1)+"-"+temp+")…</div>";
+  const seen=new Set(),ev=[],js=await Promise.all(TIPOS[tipo].map(st=>getJSON(BASE+"/teams/"+te.id+"/schedule",{season:temp,seasontype:st}).catch(()=>null)));
+  js.forEach(j=>((j&&j.events)||[]).forEach(e=>{if(!seen.has(e.id)){seen.add(e.id);ev.push(e);}}));
+  const done=ev.filter(e=>{try{return e.competitions[0].status.type.completed;}catch(_){return false;}});
+  if(done.length&&done.every(e=>e.date))done.sort((a,c)=>String(a.date).localeCompare(String(c.date)));
+  const rec=done.slice(-n);
+  if(!rec.length)throw new Error("No hay partidos jugados en "+(temp-1)+"-"+temp+" ("+TIPO_TXT[tipo]+").");
   let ok=0;const rows=await enLotes(rec,async e=>{const k=e.id+"_"+te.id;if(!(k in SUMC)){try{SUMC[k]=extraeBox(await getJSON(BASE+"/summary",{event:e.id}),te.id);}catch(_){return null;}}
-   ok++;S.innerHTML='<div class="msg info">Descargando boxscores… '+ok+"/"+rec.length+"</div>";return SUMC[k];},4);
-  const D=calcUsage(rows.filter(Boolean),rec.length);S.innerHTML=rows.some(x=>!x)?'<div class="msg info">Algunos partidos no se pudieron descargar y se omitieron.</div>':"";
-  USDATA={team:te.displayName,n:rec.length,D,desde:(rec[0].date||"").slice(0,10),hasta:(rec[rec.length-1].date||"").slice(0,10)};renderUsage();
+   ok++;S.innerHTML='<div class="msg info">Descargando boxscores… '+ok+"/"+rec.length+"</div>";return SUMC[k];},6);
+  const D=calcUsage(rows.filter(Boolean),rec.length),av=[];
+  if(rec.length<n)av.push("Solo hay "+rec.length+" partido(s) jugados con esos filtros (pediste "+n+").");
+  if(rows.some(x=>!x))av.push("Algunos partidos no se pudieron descargar y se omitieron.");
+  S.innerHTML=av.length?'<div class="msg info">'+av.join(" ")+"</div>":"";
+  USDATA={team:te.displayName,n:rec.length,pedidos:n,temp,tipo,D,desde:(rec[0].date||"").slice(0,10),hasta:(rec[rec.length-1].date||"").slice(0,10)};renderUsage();
  }catch(e){S.innerHTML='<div class="msg err">'+esc(String(e.message||e))+"</div>";}finally{b.disabled=false;b.textContent="Analizar usage";}}
-function renderUsage(){const{team,n,D,desde,hasta}=USDATA;let h='<div class="card hero"><div class="hn" style="font-size:20px;font-weight:800">'+esc(team.toUpperCase())+'</div><div class="leg" style="margin-top:6px"><span>Últimos '+n+" partidos jugados"+(desde?" ("+desde+" → "+hasta+")":"")+"</span><span>"+D.length+" jugadores</span></div></div>";
+function renderUsage(){const{team,n,D,desde,hasta,temp,tipo,pedidos}=USDATA,yo=d=>typeof ESTADO!=="undefined"&&ESTADO&&ESTADO.jug&&normalize(d.Jugador)===normalize(ESTADO.jug.nombre);let h='<div class="card hero"><div class="hn" style="font-size:20px;font-weight:800">'+esc(team.toUpperCase())+'</div><div class="leg" style="margin-top:6px"><span>Temporada '+(temp-1)+"-"+temp+" · "+TIPO_TXT[tipo]+'</span><span>'+D.length+' jugadores</span></div><div class="leg" style="margin-top:4px"><span>Últimos '+n+(n<pedidos?" (de "+pedidos+" pedidos)":"")+" partidos jugados"+(desde?" · "+desde+" → "+hasta:"")+"</span></div></div>";
  if(!D.length)return $("usOut").innerHTML=h+'<div class="msg info">Ningún jugador cumple el filtro (≥10 min por partido y haber jugado al menos la mitad de los partidos).</div>';
  const top=k=>D.reduce((a,d)=>d[k]>a[k]?d:a,D[0]),mx=k=>Math.max(...D.map(d=>d[k]))||1;
  h+='<div class="hl">'+[["🔥 Mayor productividad",D[0],"Índice Prod."],["🏀 Máximo anotador",top("PPG"),"PPG"],["🎯 Máximo facilitador",top("APG"),"APG"],["🧱 Piso más alto",top("Piso Promedio"),"Piso Promedio"]].map(([l,d,k])=>`<div><small>${l}</small><b>${esc(d.Jugador)}</b><span>${d[k]}</span> <small>${k}</small></div>`).join("")+"</div>";
  h+='<div class="seg"><button data-u="t" class="'+(USVIEW==="t"?"on":"")+'">Tarjetas</button><button data-u="b" class="'+(USVIEW==="b"?"on":"")+'">Tabla completa</button></div>';
  if(USVIEW==="t")D.forEach((d,i)=>{const[em,rn,col]=d.rol,pm=Math.max(d.PPG,d["Piso Promedio"])*1.15||1;
-  h+=`<div class="card pl"><div class="ph"><div><b>${i+1}. ${esc(d.Jugador)}</b><div class="pr" style="color:${col}">${em} ${rn}</div></div><div class="pip">Índice Prod.<b>${d["Índice Prod."]}</b></div></div>
+  h+=`<div class="card pl"${yo(d)?' style="border-color:var(--acc)"':""}><div class="ph"><div><b>${i+1}. ${esc(d.Jugador)}</b>${yo(d)?' <span class="tag a">consultado</span>':""}<div class="pr" style="color:${col}">${em} ${rn}</div></div><div class="pip">Índice Prod.<b>${d["Índice Prod."]}</b></div></div>
   <div class="g5"><div><small>PJ</small><b>${d.PJ}</b></div><div><small>MPG</small><b>${d.MPG}</b></div><div><small>PPG</small><b>${d.PPG}</b></div><div><small>APG</small><b>${d.APG}</b></div><div><small>FG%</small><b>${d["FG%"]}</b></div></div>
   ${lv("Índice de productividad (vs líder del equipo)",d["Índice Prod."])}${bar(d["Índice Prod."],0,mx("Índice Prod."),null,"var(--acc)")}
   ${lv("% de puntos del equipo que anota",d["% Puntos Propios"]+"%")}${bar(d["% Puntos Propios"],0,mx("% Puntos Propios"),null,"#38bdf8")}
@@ -845,8 +858,11 @@ function renderUsage(){const{team,n,D,desde,hasta}=USDATA;let h='<div class="car
  <dt>Pts Generados/P</dt><dd>Puntos propios + 2.2 por cada asistencia, por partido.</dd>
  <dt>Roles</dt><dd>🔥 Referente: PPG ≥ 18 e Índice ≥ 3 · ⚡ Micro-Ondero: PPG &lt; 15 e Índice ≥ 2.3 · 🎯 Motor de juego: APG ≥ 4.5 · 🏀 Segunda opción: PPG ≥ 12 o Índice ≥ 2 · 🛡️ Rol secundario: el resto (se evalúan en ese orden).</dd></dl></details>`;
  $("usOut").innerHTML=h;$("usOut").querySelectorAll(".seg button").forEach(b=>b.onclick=()=>{USVIEW=b.dataset.u;renderUsage();});}
-(function(){$("uteam").innerHTML=EQ.map(x=>`<option value="${x[1]}">${x[1]}</option>`).join("");$("uteam").value="Houston Rockets";
- try{const d=JSON.parse(localStorage.getItem("nba_us_v1")||"null");if(d){$("uteam").value=d.t;$("ugames").value=d.n;}}catch(e){}$("ubtn").onclick=analizarUsage;})();
+(function(){$("uteam").innerHTML=EQ.map(x=>`<option value="${x[1]}">${x[1]}</option>`).join("");$("uteam").value="Houston Rockets";const h=new Date();$("useason").value=h.getMonth()>=9?h.getFullYear()+1:h.getFullYear();
+ try{const d=JSON.parse(localStorage.getItem("nba_us_v2")||"null");if(d){$("uteam").value=d.t;$("ugames").value=d.n;if(d.y)$("useason").value=d.y;if(d.k)$("utipo").value=d.k;}}catch(e){}$("ubtn").onclick=analizarUsage;})();
+/* ===== Jugador de la pestaña Líneas → Eficiencia jugador y equipo de Usage ===== */
+function syncDesdeLineas(j){try{$("ejug").value=j.nombre;$("eteam").value="AUTO";$("ehint").textContent="Jugador tomado de la pestaña Líneas";
+ if([...$("uteam").options].some(o=>o.value===j.equipo)){$("uteam").value=j.equipo;$("uhint").textContent="Equipo de "+j.nombre+" (tomado de la pestaña Líneas)";}}catch(e){}}
 </script>
 </body>
 </html>
