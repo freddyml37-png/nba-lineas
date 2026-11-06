@@ -117,12 +117,20 @@ tr.det>td{background:var(--card2);padding:0}
 .g5{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:10px}.g5>div{background:var(--card2);border-radius:10px;padding:7px 2px;text-align:center}.g5 small{display:block;font-size:10px;color:var(--mut);text-transform:uppercase}.g5 b{font-size:15px}
 .hl{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}.hl>div{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px}.hl small{color:var(--mut);font-size:11px;text-transform:uppercase}.hl b{display:block;font-size:14px;margin:2px 0}.hl span{color:var(--acc);font-weight:800}
 .gl dt{font-weight:700;margin-top:8px}.gl dd{margin:2px 0 0;color:var(--mut);font-size:13px}
+.toptabs{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}.toptab{font-size:11px;padding:7px 2px;line-height:1.15}.toptab .ti{display:block;font-size:17px;margin-bottom:1px}
+.pc .ph2{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--mut);border-bottom:1px solid var(--line);padding-bottom:8px;margin-bottom:12px}
+.bdg{color:#fff;padding:2px 8px;border-radius:5px;font-weight:700;font-size:11px}
+.mu{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px}
+.tm{display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;font-weight:700;font-size:13px}.tm img{width:44px;height:44px;object-fit:contain}.tm small{color:var(--mut);font-weight:400;font-size:11px}
+.sc{font-size:26px;font-weight:900;color:#38bdf8;white-space:nowrap}
+details.iy{background:var(--card2);border-radius:10px;padding:8px 12px;margin-top:12px}details.iy summary{cursor:pointer;font-weight:700;color:#f59e0b;list-style:none;display:flex;justify-content:space-between;align-items:center}details.iy summary::-webkit-details-marker{display:none}details.iy summary::after{content:"＋";font-size:16px}details.iy[open] summary::after{content:"－"}
+.iyl{margin-top:10px;font-size:13px;border-top:1px solid var(--line);padding-top:8px}.inj-i{margin-bottom:6px}
 </style>
 </head>
 <body>
 
 <h1>🏀 NBA Líneas</h1>
-<div class="toptabs"><button class="toptab on" data-v="l">📋 Líneas</button><button class="toptab" data-v="e">⚡ Eficiencia jugador</button><button class="toptab" data-v="u">👥 Usage equipo</button></div>
+<div class="toptabs"><button class="toptab on" data-v="l"><span class="ti">📋</span>Líneas</button><button class="toptab" data-v="e"><span class="ti">⚡</span>Eficiencia jugador</button><button class="toptab" data-v="u"><span class="ti">👥</span>Usage equipo</button><button class="toptab" data-v="p"><span class="ti">🏟️</span>Partidos</button></div>
 <div id="viewLineas">
 
 <!-- ========== FORMULARIO ========== -->
@@ -169,7 +177,7 @@ tr.det>td{background:var(--card2);padding:0}
       <div class="foot" style="text-align:left">Se guarda solo en este dispositivo.</div>
     </div>
   </details>
-  <div class="foot">v15.1</div>
+  <div class="foot">v16</div>
 </div>
 
 <div id="status"></div>
@@ -229,6 +237,17 @@ tr.det>td{background:var(--card2);padding:0}
  </div>
  <div id="effStatus"></div>
  <div id="effOut"></div>
+</div>
+
+<div id="viewPartidos" class="hidden">
+ <div class="card">
+  <label for="pfecha">Fecha</label>
+  <div style="display:flex;gap:8px;align-items:center"><button class="chip" id="pprev">◀</button><input id="pfecha" type="date"><button class="chip" id="pnext">▶</button></div>
+  <button class="go" id="pbtn">Consultar partidos</button>
+  <div class="foot">Marcador y lesionados de ESPN · horarios en hora de Chile. La fecha es la del calendario de ESPN (EE.UU.).</div>
+ </div>
+ <div id="paStatus"></div>
+ <div id="paOut"></div>
 </div>
 
 <div id="viewUsage" class="hidden">
@@ -742,7 +761,7 @@ async function analizarEff(sel){const nom=$("ejug").value.trim(),temp=parseInt($
   hist=hist.slice(0,7);
   renderEff({nom:j.nombre,pos,team:team||"N/D",rival,cond,mB,mR,min,temp,st,res:proyectar(min,st,pT,pR,dR,dias,bs),pT,pR,dR,bs,dias,last,fecha,hist,aviso,usoAnt,lineas:{PTS:ln("lpts"),REB:ln("lreb"),AST:ln("last"),"3PM":ln("l3pm")}});
  }catch(e){err(esc(String(e.message||e)));}finally{b.disabled=false;b.textContent="Calcular eficiencia";}}
-function verVista(v){$("viewLineas").classList.toggle("hidden",v!=="l");$("viewEff").classList.toggle("hidden",v!=="e");$("viewUsage").classList.toggle("hidden",v!=="u");document.querySelectorAll(".toptab").forEach(t=>t.classList.toggle("on",t.dataset.v===v));try{localStorage.setItem("nba_view",v);}catch(e){}window.scrollTo(0,0);}
+function verVista(v){$("viewLineas").classList.toggle("hidden",v!=="l");$("viewEff").classList.toggle("hidden",v!=="e");$("viewUsage").classList.toggle("hidden",v!=="u");$("viewPartidos").classList.toggle("hidden",v!=="p");document.querySelectorAll(".toptab").forEach(t=>t.classList.toggle("on",t.dataset.v===v));try{localStorage.setItem("nba_view",v);}catch(e){}window.scrollTo(0,0);if(v==="p"&&!window.__pc){window.__pc=1;consultaPartidos();}}
 (function(){document.querySelectorAll(".toptab").forEach(t=>t.onclick=()=>verVista(t.dataset.v));
  $("eteam").innerHTML='<option value="AUTO">Automático</option>'+EQ.map(x=>`<option value="${x[0]}">${x[0]} – ${x[1]}</option>`).join("");
  $("erival").innerHTML='<option value="">Elige rival…</option>'+EQ.map(x=>`<option value="${x[0]}">${x[0]} – ${x[1]}</option>`).join("");
@@ -863,6 +882,43 @@ function renderUsage(){const{team,n,D,desde,hasta,temp,tipo,pedidos}=USDATA,yo=d
 /* ===== Jugador de la pestaña Líneas → Eficiencia jugador y equipo de Usage ===== */
 function syncDesdeLineas(j){try{$("ejug").value=j.nombre;$("eteam").value="AUTO";$("ehint").textContent="Jugador tomado de la pestaña Líneas";
  if([...$("uteam").options].some(o=>o.value===j.equipo)){$("uteam").value=j.equipo;$("uhint").textContent="Equipo de "+j.nombre+" (tomado de la pestaña Líneas)";}}catch(e){}}
+
+/* ===== PARTIDOS (port del Colab: NBA Scoreboard & Injury Report en español, hora de Chile) ===== */
+const TR_EST={"Day-To-Day":"Día a día","Out":"Baja","Out For Season":"Baja toda la temporada","Out for Season":"Baja toda la temporada","Questionable":"Dudoso","Doubtful":"Muy improbable","Probable":"Probable","Active":"Activo"};
+const TR_DET=[["Bruise","Contusión"],["Soreness","Molestias"],["Sprain","Esguince"],["Surgery","Cirugía"],["Illness","Enfermedad"],["Rest","Descanso"],["Personal","Motivos personales"],["Knee","Rodilla"],["Ankle","Tobillo"],["Back","Espalda"],["Foot","Pie"],["Hand","Mano"],["Wrist","Muñeca"],["Shoulder","Hombro"]];
+const trDet=d=>{if(!d||d==="Sin detalles")return"Sin detalles";let t=d;TR_DET.forEach(([a,b])=>{t=t.split(a).join(b);});return t;};
+const CHILE="America/Santiago",horaCL=i=>{const d=new Date(i);return isNaN(d)?"":d.toLocaleTimeString("es-CL",{hour:"2-digit",minute:"2-digit",hour12:false,timeZone:CHILE})+" hrs (Chile)";},
+ diaCL=i=>{const d=new Date(i);return isNaN(d)?"":d.toLocaleDateString("es-CL",{weekday:"short",day:"2-digit",month:"2-digit",timeZone:CHILE});},
+ fmtRet=x=>{const m=String(x).match(/^(\d{4})-(\d{2})-(\d{2})/);return m?m[3]+"/"+m[2]+"/"+m[1]:String(x);};
+let INJ=null;
+async function cargaLesiones(){if(INJ&&Date.now()-INJ.t<300000)return INJ.d;
+ try{const j=await getJSON("https://site.web.api.espn.com/apis/site/v2/sports/basketball/nba/injuries"),d={};
+  (j.injuries||[]).forEach(t=>{d[t.displayName||""]=(t.injuries||[]).map(i=>({name:(i.athlete||{}).displayName||"Jugador",pos:((i.athlete||{}).position||{}).abbreviation||"",st:i.status||"Desconocido",det:(i.details||{}).detail||"Sin detalles",ret:(i.details||{}).returnDate||null}));});
+  INJ={t:Date.now(),d};return d;}catch(e){return null;}}
+const inyHtml=(nm,l)=>l===null?`<p><b>${esc(nm)}:</b> Reporte no disponible.</p>`:!l.length?`<p><b>${esc(nm)}:</b> Sin lesionados reportados.</p>`:`<p style="margin:6px 0 4px"><b>${esc(nm)}:</b></p><ul style="margin:0;padding-left:18px">`+l.map(i=>{const out=/^out/i.test(i.st);return`<li class="inj-i"><b>${esc(i.name)}</b>${i.pos?" ("+esc(i.pos)+")":""} - <span style="color:${out?"#ef4444":"#eab308"};font-weight:700">${esc(TR_EST[i.st]||i.st)}</span>: ${esc(trDet(i.det))}${i.ret?` <i style="color:#38bdf8">(Retorno estimado: ${esc(fmtRet(i.ret))})</i>`:""}</li>`;}).join("")+"</ul>";
+const TR_ST={"Postponed":"Aplazado","Canceled":"Cancelado","Cancelled":"Cancelado","Suspended":"Suspendido","Delayed":"Retrasado","Halftime":"Entretiempo"};
+function cardPartido(e,inj){const c=(e.competitions&&e.competitions[0])||{},cs=c.competitors||[],h=cs.find(x=>x.homeAway==="home"),a=cs.find(x=>x.homeAway==="away");if(!h||!a)return"";
+ const stt=(e.status&&e.status.type)||{},post=stt.state==="post",live=stt.state==="in",notes=((c.notes||[])[0]||{}).headline||"",
+  cup=/cup/i.test(stt.description||"")||/cup/i.test((e.league&&e.league.name)||"")||/cup/i.test(notes),ty=e.season&&e.season.type,
+  tl=cup?["NBA Cup","#d97706"]:ty===1?["Preseason","#64748b"]:ty===3?["Playoffs","#dc2626"]:["Temporada regular NBA","#2563eb"],
+  show=post||live,sa=show?(a.score??"0"):"-",sh=show?(h.score??"0"):"-",
+  stx=post?"FINAL":live?"🔴 EN VIVO"+(stt.detail?" · "+stt.detail:""):stt.state==="pre"?"Por jugar":(TR_ST[stt.detail]||stt.detail||""),
+  nA=a.team.displayName,nH=h.team.displayName,iA=inj?inj[nA]||[]:null,iH=inj?inj[nH]||[]:null,n=(iA?iA.length:0)+(iH?iH.length:0),
+  tm=(t,r)=>`<div class="tm">${t.logo?`<img src="${esc(t.logo)}" alt="">`:""}<span>${esc(t.displayName)}</span><small>${r}</small></div>`;
+ return`<div class="card pc"><div class="ph2"><span><span class="bdg" style="background:${tl[1]}">${tl[0]}</span> &nbsp;${esc(stx)}</span><span>🕒 ${diaCL(e.date)} · ${horaCL(e.date)}</span></div>
+ <div class="mu">${tm(a.team,"Visitante")}<div class="sc">${esc(sa)} - ${esc(sh)}</div>${tm(h.team,"Local")}</div>
+ <details class="iy"><summary>Injury Report · Reporte de lesionados${inj?" ("+n+")":""}</summary><div class="iyl">${inyHtml(nA,iA)}${inyHtml(nH,iH)}</div></details></div>`;}
+async function consultaPartidos(){const f=$("pfecha").value,S=$("paStatus"),b=$("pbtn");
+ if(!f){S.innerHTML='<div class="msg err">Selecciona una fecha válida.</div>';return;}
+ b.disabled=true;b.innerHTML='<span class="spin"></span>Consultando…';$("paOut").innerHTML="";S.innerHTML='<div class="msg info">Consultando partidos…</div>';
+ try{const[sc,inj]=await Promise.all([getJSON(BASE+"/scoreboard",{dates:f.replace(/-/g,"")}),cargaLesiones()]),ev=sc.events||[];
+  S.innerHTML=inj?"":'<div class="msg info">No se pudo cargar el reporte de lesionados; se muestra solo el marcador.</div>';
+  if(!ev.length){$("paOut").innerHTML='<div class="card">No hay partidos registrados para la fecha: '+esc(f)+"</div>";return;}
+  const d=new Date(f+"T12:00:00Z"),tit=d.toLocaleDateString("es-CL",{weekday:"long",day:"numeric",month:"long",year:"numeric",timeZone:"UTC"});
+  $("paOut").innerHTML='<div class="sec" style="margin-top:0">'+esc(tit)+" · "+ev.length+" partido"+(ev.length===1?"":"s")+"</div>"+ev.map(e=>cardPartido(e,inj)).join("");
+ }catch(e){S.innerHTML='<div class="msg err">No se pudo conectar con ESPN ('+esc(String(e.message||e))+").</div>";}finally{b.disabled=false;b.textContent="Consultar partidos";}}
+function moverDia(k){const f=$("pfecha").value;if(!f)return;const d=new Date(f+"T12:00:00Z");d.setUTCDate(d.getUTCDate()+k);$("pfecha").value=d.toISOString().slice(0,10);consultaPartidos();}
+(function(){$("pfecha").value=new Date().toLocaleDateString("en-CA",{timeZone:CHILE});$("pbtn").onclick=consultaPartidos;$("pprev").onclick=()=>moverDia(-1);$("pnext").onclick=()=>moverDia(1);})();
 </script>
 </body>
 </html>
