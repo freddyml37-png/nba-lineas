@@ -125,6 +125,8 @@ tr.det>td{background:var(--card2);padding:0}
 .sc{font-size:26px;font-weight:900;color:#38bdf8;white-space:nowrap}
 details.iy{background:var(--card2);border-radius:10px;padding:8px 12px;margin-top:12px}details.iy summary{cursor:pointer;font-weight:700;color:#f59e0b;list-style:none;display:flex;justify-content:space-between;align-items:center}details.iy summary::-webkit-details-marker{display:none}details.iy summary::after{content:"＋";font-size:16px}details.iy[open] summary::after{content:"－"}
 .iyl{margin-top:10px;font-size:13px;border-top:1px solid var(--line);padding-top:8px}.inj-i{margin-bottom:6px}
+.iyl td.sticky{background:var(--card2)}.iyl th{position:static}.iyl .scroll{margin-bottom:8px}
+tr.sp td{background:var(--card);color:var(--mut);font-size:11px;text-transform:uppercase;text-align:left;padding:4px 9px}
 </style>
 </head>
 <body>
@@ -177,7 +179,7 @@ details.iy{background:var(--card2);border-radius:10px;padding:8px 12px;margin-to
       <div class="foot" style="text-align:left">Se guarda solo en este dispositivo.</div>
     </div>
   </details>
-  <div class="foot">v16</div>
+  <div class="foot">v16.1</div>
 </div>
 
 <div id="status"></div>
@@ -884,9 +886,21 @@ function syncDesdeLineas(j){try{$("ejug").value=j.nombre;$("eteam").value="AUTO"
  if([...$("uteam").options].some(o=>o.value===j.equipo)){$("uteam").value=j.equipo;$("uhint").textContent="Equipo de "+j.nombre+" (tomado de la pestaña Líneas)";}}catch(e){}}
 
 /* ===== PARTIDOS (port del Colab: NBA Scoreboard & Injury Report en español, hora de Chile) ===== */
-const TR_EST={"Day-To-Day":"Día a día","Out":"Baja","Out For Season":"Baja toda la temporada","Out for Season":"Baja toda la temporada","Questionable":"Dudoso","Doubtful":"Muy improbable","Probable":"Probable","Active":"Activo"};
-const TR_DET=[["Bruise","Contusión"],["Soreness","Molestias"],["Sprain","Esguince"],["Surgery","Cirugía"],["Illness","Enfermedad"],["Rest","Descanso"],["Personal","Motivos personales"],["Knee","Rodilla"],["Ankle","Tobillo"],["Back","Espalda"],["Foot","Pie"],["Hand","Mano"],["Wrist","Muñeca"],["Shoulder","Hombro"]];
-const trDet=d=>{if(!d||d==="Sin detalles")return"Sin detalles";let t=d;TR_DET.forEach(([a,b])=>{t=t.split(a).join(b);});return t;};
+const TR_EST={"Day-To-Day":"Día a día","Out":"Baja","Out For Season":"Baja toda la temporada","Out for Season":"Baja toda la temporada","Questionable":"Dudoso","Doubtful":"Muy improbable","Probable":"Probable","Active":"Activo","Suspension":"Suspensión","Suspended":"Suspendido"};
+const PARTES={"Ankle":["tobillo","m"],"Knee":["rodilla","f"],"Back":["espalda",null],"Lower Back":["zona lumbar",null],"Upper Back":["espalda alta",null],"Foot":["pie","m"],"Hand":["mano","f"],"Wrist":["muñeca","f"],"Shoulder":["hombro","m"],"Hip":["cadera","f"],"Hip Flexor":["flexor de cadera","m"],"Groin":["ingle","f"],"Calf":["pantorrilla","f"],"Thigh":["muslo","m"],"Hamstring":["isquiotibiales",null],"Quad":["cuádriceps","m"],"Quadriceps":["cuádriceps","m"],"Achilles":["tendón de Aquiles","m"],"Elbow":["codo","m"],"Finger":["dedo","m"],"Thumb":["pulgar","m"],"Toe":["dedo del pie","m"],"Heel":["talón","m"],"Neck":["cuello",null],"Head":["cabeza",null],"Rib":["costilla","f"],"Ribs":["costillas",null],"Eye":["ojo","m"],"Nose":["nariz","f"],"Face":["rostro","m"],"Jaw":["mandíbula","f"],"Leg":["pierna","f"],"Lower Leg":["pierna","f"],"Arm":["brazo","m"],"Glute":["glúteo","m"],"Adductor":["aductor","m"],"Oblique":["oblicuo","m"],"Abdomen":["abdomen",null],"Chest":["pecho",null],"Shin":["espinilla","f"],"Forearm":["antebrazo","m"],"Bicep":["bíceps","m"],"Tricep":["tríceps","m"]};
+const TIPOS_L={"Sprain":"Esguince","Strain":"Distensión","Soreness":"Molestias","Bruise":"Contusión","Contusion":"Contusión","Surgery":"Cirugía","Fracture":"Fractura","Injury":"Lesión","Inflammation":"Inflamación","Tendinitis":"Tendinitis","Tendonitis":"Tendinitis","Tear":"Desgarro","Pain":"Dolor","Swelling":"Hinchazón","Laceration":"Laceración","Dislocation":"Luxación","Hyperextension":"Hiperextensión","Irritation":"Irritación","Spasm":"Espasmo","Tightness":"Rigidez","Stiffness":"Rigidez","Surgery Recovery":"Recuperación de cirugía"};
+const FRASES={"Rest":"Descanso","Personal":"Motivos personales","Illness":"Enfermedad","Flu":"Gripe","Load Management":"Control de carga","Injury Management":"Control de lesión","Injury Recovery":"Recuperación de lesión","Rehab":"Rehabilitación","Return to Competition Reconditioning":"Reacondicionamiento para volver a competir","Reconditioning":"Reacondicionamiento","Conditioning":"Acondicionamiento","Concussion":"Conmoción cerebral","Concussion Protocol":"Protocolo de conmociones","Not With Team":"Fuera del equipo","Health and Safety Protocols":"Protocolos de salud y seguridad","Suspension":"Suspensión","Trade":"Traspaso","G League":"G League","Two-Way":"Contrato two-way","Sin detalles":"Sin detalles"};
+const PAL=Object.assign({Left:"izquierdo",Right:"derecho",Lower:"inferior",Upper:"superior",Minor:"leve",Severe:"grave",Torn:"desgarrado",Broken:"fracturado",Fractured:"fracturado",Sore:"dolorido",Injured:"lesionado",Management:"control",Recovery:"recuperación",Return:"regreso",Season:"temporada"},Object.fromEntries(Object.entries(PARTES).map(([k,v])=>[k,v[0]])),TIPOS_L,FRASES);
+const _alt=o=>Object.keys(o).sort((a,b)=>b.length-a.length).map(k=>k.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("|"),_find=(o,k)=>o[Object.keys(o).find(x=>x.toLowerCase()===k.toLowerCase())],cap=t=>t.charAt(0).toUpperCase()+t.slice(1),
+ RX_LES=new RegExp("^(?:(Left|Right)\\s+)?("+_alt(PARTES)+")\\s+("+_alt(TIPOS_L)+")$","i"),RX_PAR=new RegExp("^(?:(Left|Right)\\s+)?("+_alt(PARTES)+")$","i"),RX_PAL=new RegExp("\\b("+_alt(PAL)+")\\b","gi"),
+ lado=(L,P)=>!L?"":(P[1]==="m"||P[1]==="f")?" "+(L.toLowerCase()==="left"?"izquierd":"derech")+(P[1]==="m"?"o":"a"):" ("+(L.toLowerCase()==="left"?"izq.":"der.")+")",
+ ADJ={Torn:"Desgarro de",Broken:"Fractura de",Fractured:"Fractura de",Sore:"Molestias en",Strained:"Distensión de",Sprained:"Esguince de"},RX_ADJ=new RegExp("^("+_alt(ADJ)+")\\s+(?:(Left|Right)\\s+)?("+_alt(PARTES)+")$","i");
+function trSeg(t){t=t.trim();if(!t)return"";const fr=_find(FRASES,t);if(fr)return fr;
+ let m=t.match(RX_ADJ);if(m){const P=_find(PARTES,m[3]);return _find(ADJ,m[1])+" "+P[0]+lado(m[2],P);}
+ m=t.match(RX_LES);if(m){const P=_find(PARTES,m[2]);return _find(TIPOS_L,m[3])+" de "+P[0]+lado(m[1],P);}
+ m=t.match(RX_PAR);if(m){const P=_find(PARTES,m[2]);return cap(P[0])+lado(m[1],P);}
+ return cap(t.replace(RX_PAL,w=>_find(PAL,w)));}
+const trDet=d=>{if(!d||d==="Sin detalles")return"Sin detalles";const t=String(d).trim(),fr=_find(FRASES,t);if(fr)return fr;return t.split(/\s*(?:\/|;|,|\band\b)\s*/i).map(trSeg).filter(Boolean).join(" / ");};
 const CHILE="America/Santiago",horaCL=i=>{const d=new Date(i);return isNaN(d)?"":d.toLocaleTimeString("es-CL",{hour:"2-digit",minute:"2-digit",hour12:false,timeZone:CHILE})+" hrs (Chile)";},
  diaCL=i=>{const d=new Date(i);return isNaN(d)?"":d.toLocaleDateString("es-CL",{weekday:"short",day:"2-digit",month:"2-digit",timeZone:CHILE});},
  fmtRet=x=>{const m=String(x).match(/^(\d{4})-(\d{2})-(\d{2})/);return m?m[3]+"/"+m[2]+"/"+m[1]:String(x);};
@@ -907,6 +921,7 @@ function cardPartido(e,inj){const c=(e.competitions&&e.competitions[0])||{},cs=c
   tm=(t,r)=>`<div class="tm">${t.logo?`<img src="${esc(t.logo)}" alt="">`:""}<span>${esc(t.displayName)}</span><small>${r}</small></div>`;
  return`<div class="card pc"><div class="ph2"><span><span class="bdg" style="background:${tl[1]}">${tl[0]}</span> &nbsp;${esc(stx)}</span><span>🕒 ${diaCL(e.date)} · ${horaCL(e.date)}</span></div>
  <div class="mu">${tm(a.team,"Visitante")}<div class="sc">${esc(sa)} - ${esc(sh)}</div>${tm(h.team,"Local")}</div>
+ ${show?`<details class="iy" data-eid="${esc(e.id)}" data-a="${esc(a.team.id)}" data-h="${esc(h.team.id)}" data-live="${live?1:0}"><summary>Boxscore (estadísticas del partido)</summary><div class="iyl bxo">Cargando boxscore…</div></details>`:`<details class="iy"><summary>Boxscore (estadísticas del partido)</summary><div class="iyl">El boxscore estará disponible cuando comience el partido.</div></details>`}
  <details class="iy"><summary>Injury Report · Reporte de lesionados${inj?" ("+n+")":""}</summary><div class="iyl">${inyHtml(nA,iA)}${inyHtml(nH,iH)}</div></details></div>`;}
 async function consultaPartidos(){const f=$("pfecha").value,S=$("paStatus"),b=$("pbtn");
  if(!f){S.innerHTML='<div class="msg err">Selecciona una fecha válida.</div>';return;}
@@ -919,6 +934,25 @@ async function consultaPartidos(){const f=$("pfecha").value,S=$("paStatus"),b=$(
  }catch(e){S.innerHTML='<div class="msg err">No se pudo conectar con ESPN ('+esc(String(e.message||e))+").</div>";}finally{b.disabled=false;b.textContent="Consultar partidos";}}
 function moverDia(k){const f=$("pfecha").value;if(!f)return;const d=new Date(f+"T12:00:00Z");d.setUTCDate(d.getUTCDate()+k);$("pfecha").value=d.toISOString().slice(0,10);consultaPartidos();}
 (function(){$("pfecha").value=new Date().toLocaleDateString("en-CA",{timeZone:CHILE});$("pbtn").onclick=consultaPartidos;$("pprev").onclick=()=>moverDia(-1);$("pnext").onclick=()=>moverDia(1);})();
+
+/* ===== BOXSCORE desplegable en Partidos (se descarga al abrir) ===== */
+const BOXC={},BCOLS=["MIN","PTS","REB","AST","FG","3PT","FT","STL","BLK","TO","PF","+/-"];
+function boxTabla(tb){const g=(tb.statistics||[])[0];if(!g)return"";const nm=g.names||[],cols=BCOLS.filter(c=>nm.indexOf(c)>=0),ix=cols.map(c=>nm.indexOf(c)),as=g.athletes||[],ju=as.filter(a=>a.stats&&a.stats.length),dn=as.filter(a=>!(a.stats&&a.stats.length));
+ let h=`<p style="margin:10px 0 4px"><b>${esc(tb.team.displayName)}</b></p><div class="scroll"><table><thead><tr><th class="l sticky">Jugador</th>${cols.map(c=>"<th>"+c+"</th>").join("")}</tr></thead><tbody>`,sec=null;
+ ju.forEach(a=>{const t=a.starter?"Titulares":"Banca";if(t!==sec){sec=t;h+=`<tr class="sp"><td colspan="${cols.length+1}">${t}</td></tr>`;}
+  const ps=a.athlete.position&&a.athlete.position.abbreviation;h+=`<tr><td class="l sticky"><b>${esc(a.athlete.displayName)}</b>${ps?` <small style="color:var(--mut)">${esc(ps)}</small>`:""}</td>`+ix.map((i,k)=>`<td${cols[k]==="PTS"?' style="font-weight:800;color:var(--acc)"':""}>${esc(a.stats[i]??"")}</td>`).join("")+"</tr>";});
+ if(g.totals&&g.totals.length)h+=`<tr class="sp"><td colspan="${cols.length+1}">Equipo</td></tr><tr><td class="l sticky"><b>Total</b></td>`+ix.map(i=>`<td><b>${esc(g.totals[i]??"")}</b></td>`).join("")+"</tr>";
+ h+="</tbody></table></div>";
+ if(dn.length)h+=`<div class="leg" style="margin-bottom:6px"><span>No jugaron: ${dn.map(a=>esc(a.athlete.displayName)+(a.reason?" ("+esc(a.reason)+")":"")).join(", ")}</span></div>`;
+ return h;}
+document.addEventListener("toggle",async ev=>{const d=ev.target;if(!d||!d.matches||!d.matches("details[data-eid]")||!d.open)return;
+ const box=d.querySelector(".bxo"),eid=d.dataset.eid,live=d.dataset.live==="1",c=BOXC[eid];
+ if(c&&(!live||Date.now()-c.t<60000)){box.innerHTML=c.h;return;}
+ box.innerHTML="Cargando boxscore…";
+ try{const sm=await getJSON(BASE+"/summary",{event:eid}),tms=(sm.boxscore&&sm.boxscore.players)||[],ord=[d.dataset.a,d.dataset.h].map(i=>tms.find(t=>String(t.team.id)===i)).filter(Boolean),
+   h=(ord.length?ord:tms).map(boxTabla).join("")||'<span style="color:var(--mut)">ESPN no publicó el boxscore de este partido (es común en preseason).</span>';
+  BOXC[eid]={t:Date.now(),h};box.innerHTML=h;}
+ catch(e){box.innerHTML='<span style="color:#ffb4b4">No se pudo cargar el boxscore ('+esc(String(e.message||e))+").</span>";}},true);
 </script>
 </body>
 </html>
