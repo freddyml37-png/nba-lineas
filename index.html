@@ -127,12 +127,15 @@ details.iy{background:var(--card2);border-radius:10px;padding:8px 12px;margin-to
 .iyl{margin-top:10px;font-size:13px;border-top:1px solid var(--line);padding-top:8px}.inj-i{margin-bottom:6px}
 .iyl td.sticky{background:var(--card2)}.iyl th{position:static}.iyl .scroll{margin-bottom:8px}
 tr.sp td{background:var(--card);color:var(--mut);font-size:11px;text-transform:uppercase;text-align:left;padding:4px 9px}
+.toptabs{grid-template-columns:repeat(5,1fr)}.toptab{font-size:10px}.toptab .ti{font-size:16px}
+.au td.pos{color:var(--ok);font-weight:700}.au td.neg{color:var(--bad);font-weight:700}.au td.cero{color:var(--mut)}.au td.key{color:var(--acc);font-weight:800}.au th.key{color:var(--acc)}
+.iy summary small{display:block;color:var(--mut);font-weight:400;margin-top:2px}
 </style>
 </head>
 <body>
 
 <h1>🏀 NBA Líneas</h1>
-<div class="toptabs"><button class="toptab on" data-v="l"><span class="ti">📋</span>Líneas</button><button class="toptab" data-v="e"><span class="ti">⚡</span>Eficiencia jugador</button><button class="toptab" data-v="u"><span class="ti">👥</span>Usage equipo</button><button class="toptab" data-v="p"><span class="ti">🏟️</span>Partidos</button></div>
+<div class="toptabs"><button class="toptab on" data-v="l"><span class="ti">📋</span>Líneas</button><button class="toptab" data-v="e"><span class="ti">⚡</span>Eficiencia jugador</button><button class="toptab" data-v="u"><span class="ti">👥</span>Usage equipo</button><button class="toptab" data-v="p"><span class="ti">🏟️</span>Partidos</button><button class="toptab" data-v="a"><span class="ti">🚑</span>Jugador ausente</button></div>
 <div id="viewLineas">
 
 <!-- ========== FORMULARIO ========== -->
@@ -179,7 +182,7 @@ tr.sp td{background:var(--card);color:var(--mut);font-size:11px;text-transform:u
       <div class="foot" style="text-align:left">Se guarda solo en este dispositivo.</div>
     </div>
   </details>
-  <div class="foot">v16.1</div>
+  <div class="foot">v17</div>
 </div>
 
 <div id="status"></div>
@@ -250,6 +253,16 @@ tr.sp td{background:var(--card);color:var(--mut);font-size:11px;text-transform:u
  </div>
  <div id="paStatus"></div>
  <div id="paOut"></div>
+</div>
+
+<div id="viewAusente" class="hidden">
+ <div class="card">
+  <div class="row"><div><label for="ajug">Jugador</label><input id="ajug" list="plist" placeholder="Ej: Stephen Curry" autocomplete="off" autocapitalize="words" autocorrect="off"></div></div>
+  <button class="go" id="abtn">Analizar ausencias</button>
+  <div class="foot">Muestra cómo rinden sus compañeros en los partidos de su equipo en que NO jugó, comparado con su promedio cuando sí jugó. Usa los boxscores de ESPN de los partidos ya jugados.</div>
+ </div>
+ <div id="auStatus"></div>
+ <div id="auOut"></div>
 </div>
 
 <div id="viewUsage" class="hidden">
@@ -763,7 +776,7 @@ async function analizarEff(sel){const nom=$("ejug").value.trim(),temp=parseInt($
   hist=hist.slice(0,7);
   renderEff({nom:j.nombre,pos,team:team||"N/D",rival,cond,mB,mR,min,temp,st,res:proyectar(min,st,pT,pR,dR,dias,bs),pT,pR,dR,bs,dias,last,fecha,hist,aviso,usoAnt,lineas:{PTS:ln("lpts"),REB:ln("lreb"),AST:ln("last"),"3PM":ln("l3pm")}});
  }catch(e){err(esc(String(e.message||e)));}finally{b.disabled=false;b.textContent="Calcular eficiencia";}}
-function verVista(v){$("viewLineas").classList.toggle("hidden",v!=="l");$("viewEff").classList.toggle("hidden",v!=="e");$("viewUsage").classList.toggle("hidden",v!=="u");$("viewPartidos").classList.toggle("hidden",v!=="p");document.querySelectorAll(".toptab").forEach(t=>t.classList.toggle("on",t.dataset.v===v));try{localStorage.setItem("nba_view",v);}catch(e){}window.scrollTo(0,0);if(v==="p"&&!window.__pc){window.__pc=1;consultaPartidos();}}
+function verVista(v){$("viewLineas").classList.toggle("hidden",v!=="l");$("viewEff").classList.toggle("hidden",v!=="e");$("viewUsage").classList.toggle("hidden",v!=="u");$("viewPartidos").classList.toggle("hidden",v!=="p");$("viewAusente").classList.toggle("hidden",v!=="a");document.querySelectorAll(".toptab").forEach(t=>t.classList.toggle("on",t.dataset.v===v));try{localStorage.setItem("nba_view",v);}catch(e){}window.scrollTo(0,0);if(v==="p"&&!window.__pc){window.__pc=1;consultaPartidos();}}
 (function(){document.querySelectorAll(".toptab").forEach(t=>t.onclick=()=>verVista(t.dataset.v));
  $("eteam").innerHTML='<option value="AUTO">Automático</option>'+EQ.map(x=>`<option value="${x[0]}">${x[0]} – ${x[1]}</option>`).join("");
  $("erival").innerHTML='<option value="">Elige rival…</option>'+EQ.map(x=>`<option value="${x[0]}">${x[0]} – ${x[1]}</option>`).join("");
@@ -882,7 +895,7 @@ function renderUsage(){const{team,n,D,desde,hasta,temp,tipo,pedidos}=USDATA,yo=d
 (function(){$("uteam").innerHTML=EQ.map(x=>`<option value="${x[1]}">${x[1]}</option>`).join("");$("uteam").value="Houston Rockets";const h=new Date();$("useason").value=h.getMonth()>=9?h.getFullYear()+1:h.getFullYear();
  try{const d=JSON.parse(localStorage.getItem("nba_us_v2")||"null");if(d){$("uteam").value=d.t;$("ugames").value=d.n;if(d.y)$("useason").value=d.y;if(d.k)$("utipo").value=d.k;}}catch(e){}$("ubtn").onclick=analizarUsage;})();
 /* ===== Jugador de la pestaña Líneas → Eficiencia jugador y equipo de Usage ===== */
-function syncDesdeLineas(j){try{$("ejug").value=j.nombre;$("eteam").value="AUTO";$("ehint").textContent="Jugador tomado de la pestaña Líneas";
+function syncDesdeLineas(j){try{$("ejug").value=j.nombre;$("ajug").value=j.nombre;$("eteam").value="AUTO";$("ehint").textContent="Jugador tomado de la pestaña Líneas";
  if([...$("uteam").options].some(o=>o.value===j.equipo)){$("uteam").value=j.equipo;$("uhint").textContent="Equipo de "+j.nombre+" (tomado de la pestaña Líneas)";}}catch(e){}}
 
 /* ===== PARTIDOS (port del Colab: NBA Scoreboard & Injury Report en español, hora de Chile) ===== */
@@ -953,6 +966,53 @@ document.addEventListener("toggle",async ev=>{const d=ev.target;if(!d||!d.matche
    h=(ord.length?ord:tms).map(boxTabla).join("")||'<span style="color:var(--mut)">ESPN no publicó el boxscore de este partido (es común en preseason).</span>';
   BOXC[eid]={t:Date.now(),h};box.innerHTML=h;}
  catch(e){box.innerHTML='<span style="color:#ffb4b4">No se pudo cargar el boxscore ('+esc(String(e.message||e))+").</span>";}},true);
+
+/* ===== JUGADOR AUSENTE (port del Colab: rendimiento de los compañeros cuando un jugador no juega) ===== */
+const ABC={};let AUS=null,AUSEL="10";
+function extraeAus(sm,tid){const out=[];for(const tm of(sm.boxscore&&sm.boxscore.players)||[]){if(String(tm.team.id)!==String(tid))continue;const g=(tm.statistics||[])[0];if(!g)continue;
+ const lb=g.labels||g.names||[],iM=lb.indexOf("MIN")>=0?lb.indexOf("MIN"):0,iP=lb.indexOf("PTS")>=0?lb.indexOf("PTS"):lb.length-1;
+ for(const a of g.athletes||[]){if(a.didNotPlay)continue;const s=a.stats||[];
+  out.push({id:String(a.athlete.id),name:a.athlete.displayName,min:s.length>iM&&/^(?=.*\d)\d*\.?\d*$/.test(String(s[iM]))?parseFloat(s[iM]):0,pts:s.length>iP&&/^\d+$/.test(String(s[iP]))?parseFloat(s[iP]):0});}}
+ return out;}
+function calcAus(evs,pid,pname){const pl=evs.filter(e=>e.recs.some(x=>x.id===pid)),au=evs.filter(e=>e.recs.length&&!e.recs.some(x=>x.id===pid)),B={};
+ pl.forEach(e=>e.recs.forEach(x=>{const b=B[x.name]||(B[x.name]={m:0,p:0,n:0});b.m+=x.min;b.p+=x.pts;b.n++;}));
+ const me=pname.toLowerCase();
+ return{nPres:pl.length,matches:au.map(e=>({...e,rows:e.recs.filter(x=>x.name.toLowerCase()!==me).map(x=>{const b=B[x.name],mc=b?b.m/b.n:0,pc=b?b.p/b.n:0;
+  return{Jugador:x.name,ps:1,mc,ms:x.min,dm:rp(x.min-mc,1),pc,ps_:x.pts,dp:rp(x.pts-pc,1)};}).sort((a,b)=>b.ms-a.ms)}))};}
+async function analizarAusente(sel){const nom=$("ajug").value.trim(),S=$("auStatus"),b=$("abtn");
+ if(!nom&&!sel){S.innerHTML='<div class="msg err">Escribe el nombre de un jugador.</div>';return;}
+ b.disabled=true;b.innerHTML='<span class="spin"></span>Analizando…';$("auOut").innerHTML="";
+ try{let j=sel;
+  if(!j){S.innerHTML='<div class="msg info">Buscando jugador…</div>';if(!IDX)IDX=await cargarIndice();poblarDatalist();const c=buscarCandidatos(IDX,nom);
+   if(!c.length)throw new Error("No se encontró '"+esc(nom)+"' en los rosters actuales de la NBA.");if(c.length>1){elegir(S,c.slice(0,12),analizarAusente);return;}j=c[0];}
+  S.innerHTML='<div class="msg info">Buscando el equipo de '+esc(j.nombre)+"…</div>";
+  const tms=(await getJSON(BASE+"/teams")).sports[0].leagues[0].teams.map(x=>x.team),te=tms.find(t=>t.displayName===j.equipo)||tms.find(t=>fixAb(t.abbreviation)===fixAb(j.ab));
+  if(!te)throw new Error("No se pudo identificar el equipo de "+esc(j.nombre)+".");
+  const ev=((await getJSON(BASE+"/teams/"+te.id+"/schedule")).events||[]).filter(e=>{try{return e.competitions[0].status.type.completed;}catch(_){return false;}});
+  if(!ev.length)throw new Error("El equipo aún no registra partidos completados esta temporada.");
+  let ok=0,fail=0;const evs=await enLotes(ev,async e=>{const k=e.id+"_"+te.id;if(!(k in ABC)){try{ABC[k]=extraeAus(await getJSON(BASE+"/summary",{event:e.id}),te.id);}catch(_){fail++;ok++;return{recs:[]};}}
+   ok++;S.innerHTML='<div class="msg info">Escaneando partidos… '+ok+"/"+ev.length+"</div>";
+   const c=e.competitions[0],cs=c.competitors||[],mine=cs.find(x=>String(x.team.id)===String(te.id)),op=cs.find(x=>String(x.team.id)!==String(te.id)),sc=x=>x&&x.score!==undefined?(typeof x.score==="object"?x.score.displayValue:x.score):"0";
+   return{id:e.id,date:(e.date||"").slice(0,10),loc:mine&&mine.homeAway==="home"?"vs":"@",opp:op?op.team.displayName:"Desconocido",ts:sc(mine),os:sc(op),recs:ABC[k]};},6);
+  const R=calcAus(evs,String(j.id),j.nombre),sinBox=evs.filter(e=>!e.recs.length).length;
+  AUS={player:j.nombre,team:te.displayName,nComp:ev.length,nPres:R.nPres,matches:R.matches,sinBox,fail};
+  const av=[];if(sinBox)av.push(sinBox+" partido(s) sin boxscore en ESPN se omitieron"+(fail?" ("+fail+" no se pudieron descargar)":"")+".");S.innerHTML=av.length?'<div class="msg info">'+av.join(" ")+"</div>":"";renderAus();
+ }catch(e){S.innerHTML='<div class="msg err">'+esc(String(e.message||e))+"</div>";}finally{b.disabled=false;b.textContent="Analizar ausencias";}}
+const fN=x=>Number.isInteger(x)?String(x):x.toFixed(1),dC=x=>`<td class="${x>0?"pos":x<0?"neg":"cero"}">${x>0?"+":""}${x.toFixed(1)}</td>`;
+function renderAus(){const A=AUS;let h=`<div class="card hero"><div class="hn" style="font-size:20px;font-weight:800">${esc(A.player.toUpperCase())}</div><div class="leg" style="margin-top:6px"><span>${esc(A.team)}</span><span>Ausente en ${A.matches.length} de ${A.nComp} partidos</span></div></div>`;
+ if(!A.matches.length){$("auOut").innerHTML=h+`<div class="msg info">✅ ${esc(A.player)} ha jugado todos los partidos completados con boxscore. No hay ausencias.</div>`;return;}
+ h+='<div class="seg"><button data-n="10" class="'+(AUSEL==="10"?"on":"")+'">Top 10 (como el Colab)</button><button data-n="all" class="'+(AUSEL==="all"?"on":"")+'">Todos los que jugaron</button></div>';
+ A.matches.forEach((m,i)=>{const w=parseFloat(m.ts)>parseFloat(m.os),rows=(AUSEL==="10"?m.rows.slice(0,10):m.rows).slice().sort((a,b)=>b.ps_-a.ps_||b.ms-a.ms);
+  h+=`<details class="iy"><summary><span>PARTIDO ${i+1} · ${esc(m.date)}<small>${esc(A.team)} ${m.loc} ${esc(m.opp)} · ${esc(m.ts)} - ${esc(m.os)} <b style="color:${w?"var(--ok)":"var(--bad)"}">${w?"Ganó":"Perdió"}</b></small></span></summary><div class="iyl au"><div class="scroll"><table><thead><tr><th class="l sticky">Jugador</th><th>P. sin</th><th>MIN con</th><th>MIN sin</th><th>Δ MIN</th><th>PTS con</th><th class="key">PTS sin ▼</th><th>Δ PTS</th></tr></thead><tbody>`+
+   rows.map(r=>`<tr><td class="l sticky"><b>${esc(r.Jugador)}</b></td><td>${r.ps}</td><td>${r.mc.toFixed(1)}</td><td>${fN(r.ms)}</td>${dC(r.dm)}<td>${r.pc.toFixed(1)}</td><td class="key">${fN(r.ps_)}</td>${dC(r.dp)}</tr>`).join("")+`</tbody></table></div><div class="leg" style="margin-top:6px"><span>Ordenado por PTS sin, de mayor a menor · ${rows.length} jugador(es)</span></div></div></details>`;});
+ h+=`<details class="card gl"><summary style="cursor:pointer;font-weight:700">¿Cómo leer estos datos?</summary><dl>
+ <dt>Partido ausente</dt><dd>Partido completado de su equipo en que ${esc(A.player)} no jugó (lesión, descanso o porque aún no estaba en el equipo). Los partidos sin boxscore en ESPN se omiten.</dd>
+ <dt>con / sin</dt><dd>“con”: promedio del compañero en los partidos donde ${esc(A.player)} sí jugó (${A.nPres}). “sin”: lo que hizo en ese partido sin él. Si “con” aparece en 0.0, no hay datos de ese jugador cuando ${esc(A.player)} jugó.</dd>
+ <dt>Δ MIN / Δ PTS</dt><dd>“sin” menos “con”. En verde, sube cuando falta ${esc(A.player)}; en rojo, baja.</dd>
+ <dt>P. sin</dt><dd>Partidos sin ${esc(A.player)} que cuenta esa fila (1 por partido).</dd>
+ <dt>Orden y lista</dt><dd>Cada lista va de mayor a menor en PTS sin. “Top 10” toma los 10 con más minutos en ese partido, como el Colab; “Todos” muestra a todos los que jugaron.</dd></dl></details>`;
+ $("auOut").innerHTML=h;$("auOut").querySelectorAll(".seg button").forEach(b=>b.onclick=()=>{AUSEL=b.dataset.n;const op=[...$("auOut").querySelectorAll("details.iy")].map(d=>d.open);renderAus();$("auOut").querySelectorAll("details.iy").forEach((d,i)=>{d.open=!!op[i];});});}
+(function(){$("abtn").onclick=()=>analizarAusente();$("ajug").addEventListener("keydown",e=>{if(e.key==="Enter")analizarAusente();});})();
 </script>
 </body>
 </html>
